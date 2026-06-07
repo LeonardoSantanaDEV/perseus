@@ -1,6 +1,10 @@
 # Perseus
 
+<<<<<<< HEAD
 Plataforma de orquestração e automação de bots. Permite cadastrar
+=======
+Plataforma de orquestração de bots em Python. Permite cadastrar
+>>>>>>> 034075dd90a758c97d49b116992debd38cb6eb77
 automações, versionar pacotes, conectar runners (máquinas) em tempo real,
 disparar tarefas (manuais ou agendadas) e monitorar tudo num dashboard com ROI.
 
