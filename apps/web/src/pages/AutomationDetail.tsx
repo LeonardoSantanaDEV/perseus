@@ -63,6 +63,8 @@ export function AutomationDetail() {
     }
   }
 
+  const [running, setRunning] = useState(false);
+
   async function run() {
     let parsed: Record<string, unknown> = {};
     try {
@@ -70,12 +72,28 @@ export function AutomationDetail() {
     } catch {
       return alert('Parâmetros devem ser um JSON válido');
     }
-    const res = await api.post('/tasks', {
-      automationId: id,
-      runnerId: runnerId || undefined,
-      params: parsed,
-    });
-    navigate(`/tasks/${res.data.id}`);
+    setRunning(true);
+    try {
+      const res = await api.post('/tasks', {
+        automationId: id,
+        runnerId: runnerId || undefined,
+        params: parsed,
+      });
+      navigate(`/tasks/${res.data.id}`);
+    } catch (e: any) {
+      const status = e.response?.status;
+      const msg =
+        e.response?.data?.message ||
+        e.message ||
+        'Falha ao disparar a tarefa';
+      if (status === 401) {
+        alert('Sessão expirada. Você será redirecionado para o login.');
+      } else {
+        alert(Array.isArray(msg) ? msg.join('\n') : msg);
+      }
+    } finally {
+      setRunning(false);
+    }
   }
 
   async function removeVersion(versionId: string) {
@@ -152,8 +170,12 @@ export function AutomationDetail() {
                 className="font-mono"
               />
             </Field>
-            <Button onClick={run} disabled={versions.length === 0} icon={Play}>
-              Disparar tarefa
+            <Button
+              onClick={run}
+              disabled={versions.length === 0 || running}
+              icon={Play}
+            >
+              {running ? 'Disparando…' : 'Disparar tarefa'}
             </Button>
             {versions.length === 0 && (
               <p className="text-xs text-amber-600">

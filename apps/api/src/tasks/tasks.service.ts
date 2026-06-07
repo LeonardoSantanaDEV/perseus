@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -87,13 +88,32 @@ export class TasksService {
       botVersionId = latest.id;
     }
 
+    // Garante que o usuário do token ainda existe (evita violar a FK Task_userId_fkey).
+    // Se o banco foi recriado/re-seedado, o token antigo aponta para um usuário inexistente.
+    let resolvedUserId: string | null = null;
+    if (userId) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (!owner) {
+        this.logger.warn(
+          `Token aponta para usuário inexistente (${userId}). Sessão considerada expirada.`,
+        );
+        throw new UnauthorizedException(
+          'Sessão expirada ou inválida. Faça login novamente.',
+        );
+      }
+      resolvedUserId = owner.id;
+    }
+
     const task = await this.prisma.task.create({
       data: {
         automationId: dto.automationId,
         botVersionId,
         runnerId: dto.runnerId,
         workspaceId,
-        userId: userId ?? undefined,
+        userId: resolvedUserId ?? undefined,
         params: (dto.params as Prisma.InputJsonValue) ?? undefined,
         priority: dto.priority ?? 0,
         state: 'QUEUED',
