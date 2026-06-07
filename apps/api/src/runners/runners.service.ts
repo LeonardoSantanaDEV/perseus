@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,8 @@ import { CreateRunnerDto, UpdateRunnerDto } from './dto';
 
 @Injectable()
 export class RunnersService {
+  private readonly logger = new Logger(RunnersService.name);
+
   constructor(
     private prisma: PrismaService,
     private realtime: RealtimeService,
@@ -27,14 +29,16 @@ export class RunnersService {
     return runner;
   }
 
-  create(workspaceId: string, dto: CreateRunnerDto) {
-    return this.prisma.runner.create({
+  async create(workspaceId: string, dto: CreateRunnerDto) {
+    const runner = await this.prisma.runner.create({
       data: {
         label: dto.label,
         token: this.generateToken(),
         workspaceId,
       },
     });
+    this.logger.log(`Runner criado: "${runner.label}" (${runner.id})`);
+    return runner;
   }
 
   async update(workspaceId: string, id: string, dto: UpdateRunnerDto) {
@@ -83,6 +87,7 @@ export class RunnersService {
         id: runner.id,
         status: 'OFFLINE',
       });
+      this.logger.warn(`Runner "${runner.label}" (${runner.id}) marcado como OFFLINE por inatividade`);
     }
   }
 }

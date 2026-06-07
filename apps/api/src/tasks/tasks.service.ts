@@ -101,6 +101,7 @@ export class TasksService {
       },
     });
 
+    this.logger.log(`Tarefa criada: ${task.id} | automação: ${dto.automationId} | runner: ${dto.runnerId ?? 'auto'}`);
     this.emitUpdate(task.id);
     if (!scheduledFor) await this.tryDispatch(task.id);
     return task;
@@ -151,7 +152,10 @@ export class TasksService {
       taskToken,
     });
 
-    if (!delivered) return false;
+    if (!delivered) {
+      this.logger.warn(`Tarefa ${taskId}: runner ${runnerId} não recebeu o dispatch (desconectado?)`);
+      return false;
+    }
 
     await this.prisma.task.update({
       where: { id: task.id },
@@ -165,6 +169,7 @@ export class TasksService {
       id: runnerId,
       status: 'BUSY',
     });
+    this.logger.log(`Tarefa ${taskId} despachada para runner ${runnerId}`);
     this.emitUpdate(task.id);
     return true;
   }
@@ -324,6 +329,9 @@ export class TasksService {
       message: string;
     }>,
   ) {
+    this.logger.log(
+      `Tarefa ${taskId} finalizada: ${state} | items=${data.totalItems ?? '-'} ok=${data.processed ?? '-'} err=${data.failed ?? '-'} exitCode=${data.exitCode ?? '-'}`,
+    );
     const task = await this.prisma.task.update({
       where: { id: taskId },
       data: {
