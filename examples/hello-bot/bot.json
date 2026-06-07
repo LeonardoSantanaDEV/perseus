@@ -1,0 +1,10 @@
+{
+  "name": "hello-bot",
+  "version": "1.0.0",
+  "tech": "python",
+  "pythonVersion": "3.12",
+  "entrypoint": "main.py",
+  "params": [
+    { "key": "quantidade", "type": "number", "required": false }
+  ]
+}

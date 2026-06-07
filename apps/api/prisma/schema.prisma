@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  CLIENT
+}
+
+enum RunnerStatus {
+  ONLINE
+  OFFLINE
+  BUSY
+}
+
+enum TaskState {
+  QUEUED
+  DISPATCHED
+  RUNNING
+  FINISHED
+  FAILED
+  TIMEOUT
+  CANCELLED
+}
+
+enum EventType {
+  ALERT
+  ERROR
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users        User[]
+  repositories Repository[]
+  automations  Automation[]
+  runners      Runner[]
+  tasks        Task[]
+  schedules    Schedule[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         Role      @default(OPERATOR)
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt    DateTime  @default(now())
+
+  tasks Task[]
+}
+
+model Repository {
+  id          String    @id @default(cuid())
+  name        String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  automations Automation[]
+
+  @@unique([workspaceId, name])
+}
+
+model Automation {
+  id           String     @id @default(cuid())
+  name         String
+  label        String
+  description  String?
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  workspaceId  String
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id])
+
+  // Configuração de ROI
+  manualMinutesPerItem Float?
+  hourlyCost           Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions  BotVersion[]
+  tasks     Task[]
+  schedules Schedule[]
+
+  @@unique([repositoryId, label])
+}
+
+model BotVersion {
+  id             String     @id @default(cuid())
+  automationId   String
+  automation     Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  version        String
+  releaseVersion String?
+  tech           String     @default("python")
+  pythonVersion  String?
+  entrypoint     String     @default("main.py")
+  storageKey     String
+  manifest       Json?
+  createdAt      DateTime   @default(now())
+
+  tasks Task[]
+
+  @@unique([automationId, version])
+}
+
+model Runner {
+  id          String       @id @default(cuid())
+  label       String
+  token       String       @unique
+  status      RunnerStatus @default(OFFLINE)
+  host        String?
+  os          String?
+  lastSeen    DateTime?
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  tasks     Task[]
+  schedules Schedule[]
+}
+
+model Task {
+  id           String      @id @default(cuid())
+  automationId String
+  automation   Automation  @relation(fields: [automationId], references: [id])
+  botVersionId String?
+  botVersion   BotVersion? @relation(fields: [botVersionId], references: [id])
+  runnerId     String?
+  runner       Runner?     @relation(fields: [runnerId], references: [id])
+  workspaceId  String
+  workspace    Workspace   @relation(fields: [workspaceId], references: [id])
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id])
+
+  state      TaskState @default(QUEUED)
+  priority   Int       @default(0)
+  params     Json?
+  totalItems Int?
+  processed  Int?
+  failed     Int?
+  exitCode   Int?
+  message    String?
+
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  logs      TaskLog[]
+  events    EventLog[]
+  artifacts Artifact[]
+
+  @@index([state])
+  @@index([runnerId])
+}
+
+model TaskLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  seq       Int
+  level     String   @default("info")
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model EventLog {
+  id        String    @id @default(cuid())
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type      EventType
+  message   String
+  payload   Json?
+  createdAt DateTime  @default(now())
+
+  @@index([taskId])
+}
+
+model Artifact {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  name       String
+  storageKey String
+  size       Int?
+  createdAt  DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model Schedule {
+  id           String     @id @default(cuid())
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  runnerId     String?
+  runner       Runner?    @relation(fields: [runnerId], references: [id])
+  workspaceId  String
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id])
+  cron         String
+  params       Json?
+  enabled      Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}

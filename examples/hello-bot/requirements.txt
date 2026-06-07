@@ -1,0 +1,3 @@
+# O SDK do orquestrador é instalado automaticamente pelo runner (SDK_PATH).
+# Liste aqui as demais dependências do seu bot, por exemplo:
+# openpyxl>=3.1
