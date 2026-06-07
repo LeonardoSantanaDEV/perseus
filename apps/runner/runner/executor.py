@@ -65,9 +65,9 @@ def run_task(config: Config, task: dict, emit_log: "LogFn") -> int:
     )
     py = _venv_python(venv_dir)
 
-    # 3b. Instala o SDK do orquestrador no venv (se configurado)
+    # 3b. Instala o SDK do Perseus no venv (se configurado)
     if config.sdk_path and os.path.isdir(config.sdk_path):
-        emit_log("Instalando SDK do orquestrador...", "info")
+        emit_log("Instalando SDK do Perseus...", "info")
         subprocess.run(
             [py, "-m", "pip", "install", "-q", "-e", config.sdk_path],
             capture_output=True,
@@ -91,10 +91,10 @@ def run_task(config: Config, task: dict, emit_log: "LogFn") -> int:
 
     # 5. Variáveis de ambiente para o bot / SDK
     env = os.environ.copy()
-    env["ORCHESTRATOR_URL"] = config.api_url
+    env["PERSEUS_URL"] = config.api_url
     env["TASK_ID"] = task_id
     env["TASK_TOKEN"] = task["taskToken"]
-    env["ORCH_PARAMS"] = json.dumps(task.get("params") or {})
+    env["PERSEUS_PARAMS"] = json.dumps(task.get("params") or {})
     # Disponibiliza o SDK instalado no runner para o venv do bot
     env["PYTHONPATH"] = os.pathsep.join(
         [p for p in [env.get("PYTHONPATH", "")] if p]

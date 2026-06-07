@@ -1,4 +1,4 @@
-# Bot Orchestrator - start.ps1
+# Perseus - start.ps1
 # Sobe toda a stack com um unico comando: .\start.ps1
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -35,7 +35,7 @@ $tries = 0
 do {
     Start-Sleep -Seconds 2
     $tries++
-    $ok = docker exec orch_postgres pg_isready -U orch -d orchestrator 2>$null
+    $ok = docker exec perseus_postgres pg_isready -U perseus -d perseus 2>$null
 } while ($ok -notmatch "accepting connections" -and $tries -lt 15)
 if ($tries -ge 15) { throw "Postgres nao ficou disponivel. Verifique: docker ps" }
 Write-Host "  Postgres pronto!" -ForegroundColor Green
@@ -90,7 +90,7 @@ Start-Process "http://localhost:5173"
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Bot Orchestrator rodando!" -ForegroundColor Green
+Write-Host "  Perseus rodando!" -ForegroundColor Green
 Write-Host "  Frontend : http://localhost:5173" -ForegroundColor Green
 Write-Host "  API      : http://localhost:3000/api" -ForegroundColor Green
 Write-Host "  MinIO    : http://localhost:9001  (minioadmin / minioadmin)" -ForegroundColor Green

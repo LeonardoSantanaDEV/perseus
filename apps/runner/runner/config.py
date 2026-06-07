@@ -29,8 +29,8 @@ class Config:
                 "copie o token para o arquivo .env"
             )
         return cls(
-            ws_url=os.getenv("ORCHESTRATOR_WS", "http://localhost:3000"),
-            api_url=os.getenv("ORCHESTRATOR_API", "http://localhost:3000/api"),
+            ws_url=os.getenv("PERSEUS_WS", "http://localhost:3000"),
+            api_url=os.getenv("PERSEUS_API", "http://localhost:3000/api"),
             token=token,
             heartbeat_interval=int(os.getenv("HEARTBEAT_INTERVAL", "10")),
             work_dir=os.getenv("WORK_DIR", "_work"),

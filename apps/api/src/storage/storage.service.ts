@@ -24,8 +24,8 @@ export class StorageService {
         secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
       },
     });
-    this.packagesBucket = process.env.S3_BUCKET_PACKAGES || 'bot-packages';
-    this.artifactsBucket = process.env.S3_BUCKET_ARTIFACTS || 'bot-artifacts';
+    this.packagesBucket = process.env.S3_BUCKET_PACKAGES || 'perseus-packages';
+    this.artifactsBucket = process.env.S3_BUCKET_ARTIFACTS || 'perseus-artifacts';
     this.publicEndpoint =
       process.env.S3_PUBLIC_ENDPOINT ||
       process.env.S3_ENDPOINT ||

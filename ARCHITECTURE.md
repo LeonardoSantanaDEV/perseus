@@ -1,7 +1,7 @@
-# Plataforma de Orquestração de Bots — Documento de Arquitetura
+# Perseus — Documento de Arquitetura
 
-> Plataforma open-source-style inspirada na BotCity para orquestrar, agendar,
-> executar e monitorar bots (inicialmente em Python) em runners distribuídos.
+> Plataforma de orquestração, agendamento, execução e monitoramento de bots
+> (inicialmente em Python) em runners distribuídos.
 >
 > **Status:** planejamento / fundação
 > **Última atualização:** 2026-06-05
@@ -15,7 +15,7 @@ Construir uma plataforma onde seja possível:
 - Cadastrar **automações** e versionar seus **pacotes** (deploy).
 - Conectar **runners** (máquinas) que reportam status em tempo real (online/offline).
 - **Enviar tarefas** para execução (manual ou agendada), em runner específico ou via fila.
-- **Conectar o código do bot via SDK** (estilo BotCity Maestro): `finish`, `failed`,
+- **Conectar o código do bot via SDK**: `finish`, `failed`,
   total de itens processados, alertas, erros e upload de artefatos.
 - **Dashboard** com métricas operacionais e **ROI** por automação.
 - (Fase futura) **Portal do cliente** multi-tenant, onde o cliente roda apenas
@@ -27,7 +27,7 @@ Construir uma plataforma onde seja possível:
 
 | Tema | Decisão | Justificativa |
 |---|---|---|
-| Front-end | React + Vite + TypeScript + Tailwind + shadcn/ui + Recharts | Visual próximo ao da BotCity, produtivo |
+| Front-end | React + Vite + TypeScript + Tailwind + shadcn/ui + Recharts | Interface produtiva e moderna |
 | Back-end | **NestJS** (Node + TypeScript) | Estrutura modular, WebSocket gateway, validação, filas nativas |
 | Runner | **Python** | Mesmo runtime dos bots (cria venv, instala requirements) |
 | Banco | PostgreSQL | Relacional, ideal para tarefas/agendamentos/ROI |
@@ -57,7 +57,7 @@ flowchart TB
     subgraph Maquina["Máquina / VM do runner"]
         R["Runner Agent (Python)<br/>conexão de saída persistente"]
         VENV["venv isolado<br/>main.py em execução"]
-        SDK["SDK no bot<br/>maestro.finish/failed/..."]
+        SDK["SDK no bot<br/>client.finish/failed/..."]
     end
 
     FE -->|HTTPS REST| API
@@ -85,7 +85,7 @@ flowchart TB
 │   ├── web/                    # Front-end React (Vite)
 │   └── runner/                 # Agente Runner (Python)
 ├── packages/
-│   └── sdk-python/             # SDK que o bot importa (estilo Maestro)
+│   └── sdk-python/             # SDK que o bot importa
 └── examples/
     └── hello-bot/              # bot de exemplo (main.py + requirements + bot.json)
 ```
@@ -150,12 +150,12 @@ meu-bot.zip
 ### 6.3 Ciclo de vida de uma execução
 
 1. **Upload** do `.zip` → API valida `bot.json`, versiona e salva no MinIO.
-2. **Nova tarefa** → escolhe automação + runner (ou orquestrador escolhe runner livre).
+2. **Nova tarefa** → escolhe automação + runner (ou Perseus escolhe runner livre).
 3. **Dispatch** → runner recebe `task.dispatch` com `downloadUrl` (URL assinada) e `taskToken`.
 4. Runner **baixa e descompacta** em diretório temporário isolado por `taskId`.
 5. Runner **cria venv** e roda `pip install -r requirements.txt`.
 6. Runner **injeta variáveis de ambiente**:
-   - `ORCHESTRATOR_URL`, `TASK_ID`, `TASK_TOKEN`, mais os `params` da tarefa.
+   - `PERSEUS_URL`, `TASK_ID`, `TASK_TOKEN`, mais os `params` da tarefa.
 7. Runner **executa o entrypoint** (`python main.py`), faz streaming de log e captura exit code.
 8. Bot **reporta via SDK** (status, itens, artefatos); runner emite `task.finished`.
 9. Runner **limpa** venv/temp.
@@ -165,14 +165,14 @@ meu-bot.zip
 
 ---
 
-## 7. SDK Python (estilo Maestro)
+## 7. SDK Python
 
 O bot importa o SDK; ele lê o token/URL injetados pelo runner e fala REST com a API.
 
 ```python
-from orchestrator_sdk import Maestro
+from perseus_sdk import PerseusClient
 
-maestro = Maestro.from_env()  # lê ORCHESTRATOR_URL, TASK_ID, TASK_TOKEN
+client = PerseusClient.from_env()  # lê PERSEUS_URL, TASK_ID, TASK_TOKEN
 
 try:
     items = carregar_itens()
@@ -183,16 +183,16 @@ try:
             processados += 1
         except Exception as e:
             falhas += 1
-            maestro.error(e, context={"item": item.id})
+            client.error(e, context={"item": item.id})
 
-    maestro.post_artifact("relatorio.xlsx")          # "Arquivos de Resultado"
-    maestro.finish_task(status="SUCCESS",
-                        total_items=len(items),
-                        processed=processados,
-                        failed=falhas)
+    client.post_artifact("relatorio.xlsx")          # "Arquivos de Resultado"
+    client.finish_task(status="SUCCESS",
+                       total_items=len(items),
+                       processed=processados,
+                       failed=falhas)
 except Exception as e:
-    maestro.error(e)
-    maestro.finish_task(status="FAILED")
+    client.error(e)
+    client.finish_task(status="FAILED")
 ```
 
 ### API consumida pelo SDK (autenticada por `TASK_TOKEN`)
@@ -228,7 +228,7 @@ except Exception as e:
 
 ---
 
-## 9. Telas do front-end (espelhando a BotCity)
+## 9. Telas do front-end
 
 1. **Central de Operações** — operação ao vivo (fila, runners online) + visão histórica.
 2. **Runners** — lista com status, última atualização, (screenshot futuro).
@@ -245,7 +245,7 @@ except Exception as e:
 
 ## 10. Dashboard & ROI
 
-Cards iguais aos prints: Total de Tarefas, Agendamentos, Alertas, Erros,
+Cards: Total de Tarefas, Agendamentos, Alertas, Erros,
 Tarefas por Runner, Tarefas com falha.
 
 **ROI por automação:** cadastra-se `tempoManualPorItem` (min) e `custoHora`.
@@ -301,5 +301,5 @@ sem mudança de código (só configuração).
 
 - Isolamento por **Docker por tarefa** vs venv (custo x segurança).
 - Múltiplas tecnologias de bot além de Python (Node, .NET) — manifesto já prevê `tech`.
-- Estratégia de **screenshot do runner** (igual BotCity) — captura periódica opcional.
+- Estratégia de **screenshot do runner** — captura periódica opcional.
 - Limites de concorrência por runner (1 tarefa por vez vs N).

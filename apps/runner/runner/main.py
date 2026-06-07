@@ -23,7 +23,7 @@ class RunnerAgent:
     def _register_handlers(self):
         @self.sio.event(namespace="/runner")
         def connect():
-            print("[runner] conectado ao orquestrador")
+            print("[runner] conectado ao Perseus")
 
         @self.sio.event(namespace="/runner")
         def disconnect():

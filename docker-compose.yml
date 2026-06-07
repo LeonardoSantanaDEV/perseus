@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: orch_postgres
+    container_name: perseus_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: orch
-      POSTGRES_PASSWORD: orch
-      POSTGRES_DB: orchestrator
+      POSTGRES_USER: perseus
+      POSTGRES_PASSWORD: perseus
+      POSTGRES_DB: perseus
     ports:
       - "5432:5432"
     volumes:
@@ -14,14 +14,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: orch_redis
+    container_name: perseus_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
 
   minio:
     image: minio/minio:latest
-    container_name: orch_minio
+    container_name: perseus_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -41,8 +41,8 @@ services:
     entrypoint: >
       /bin/sh -c "
       until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'aguardando minio...' && sleep 2; done;
-      /usr/bin/mc mb -p local/bot-packages;
-      /usr/bin/mc mb -p local/bot-artifacts;
+      /usr/bin/mc mb -p local/perseus-packages;
+      /usr/bin/mc mb -p local/perseus-artifacts;
       exit 0;
       "
 

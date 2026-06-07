@@ -1,8 +1,8 @@
 {
-  "name": "bot-orchestrator",
+  "name": "perseus",
   "version": "0.1.0",
   "private": true,
-  "description": "Plataforma de orquestração de bots (estilo BotCity)",
+  "description": "Perseus — Plataforma de orquestração e automação de bots",
   "workspaces": [
     "apps/api",
     "apps/web"

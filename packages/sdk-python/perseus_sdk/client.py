@@ -6,22 +6,22 @@ from typing import Any, Dict, Optional
 import requests
 
 
-class Maestro:
+class PerseusClient:
     """
-    SDK para o bot reportar status ao orquestrador.
+    SDK para o bot reportar status ao Perseus.
 
     Uso típico (dentro do main.py do bot):
 
-        from orchestrator_sdk import Maestro
+        from perseus_sdk import PerseusClient
 
-        maestro = Maestro.from_env()
-        maestro.start_task()
+        client = PerseusClient.from_env()
+        client.start_task()
         try:
             ...
-            maestro.finish_task(status="SUCCESS", total_items=10, processed=10)
+            client.finish_task(status="SUCCESS", total_items=10, processed=10)
         except Exception as e:
-            maestro.error(e)
-            maestro.finish_task(status="FAILED")
+            client.error(e)
+            client.finish_task(status="FAILED")
     """
 
     def __init__(
@@ -44,16 +44,16 @@ class Maestro:
             )
 
     @classmethod
-    def from_env(cls) -> "Maestro":
+    def from_env(cls) -> "PerseusClient":
         params: Dict[str, Any] = {}
-        raw = os.getenv("ORCH_PARAMS")
+        raw = os.getenv("PERSEUS_PARAMS")
         if raw:
             try:
                 params = json.loads(raw)
             except json.JSONDecodeError:
                 params = {}
         return cls(
-            base_url=os.getenv("ORCHESTRATOR_URL"),
+            base_url=os.getenv("PERSEUS_URL"),
             task_id=os.getenv("TASK_ID"),
             task_token=os.getenv("TASK_TOKEN"),
             params=params,
@@ -63,7 +63,7 @@ class Maestro:
 
     def _post(self, path: str, **kwargs) -> Optional[dict]:
         if self.offline:
-            print(f"[maestro:offline] POST {path} {kwargs.get('json') or ''}")
+            print(f"[perseus:offline] POST {path} {kwargs.get('json') or ''}")
             return None
         try:
             resp = self.session.post(
@@ -72,7 +72,7 @@ class Maestro:
             resp.raise_for_status()
             return resp.json() if resp.content else None
         except requests.RequestException as e:
-            print(f"[maestro] falha em {path}: {e}")
+            print(f"[perseus] falha em {path}: {e}")
             return None
 
     def get_params(self) -> Dict[str, Any]:
@@ -133,7 +133,7 @@ class Maestro:
 
     def post_artifact(self, file_path: str) -> None:
         if self.offline:
-            print(f"[maestro:offline] artifact {file_path}")
+            print(f"[perseus:offline] artifact {file_path}")
             return
         try:
             with open(file_path, "rb") as f:
@@ -143,4 +143,4 @@ class Maestro:
                     timeout=120,
                 )
         except (OSError, requests.RequestException) as e:
-            print(f"[maestro] falha ao enviar artefato: {e}")
+            print(f"[perseus] falha ao enviar artefato: {e}")

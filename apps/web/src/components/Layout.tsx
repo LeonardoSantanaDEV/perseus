@@ -26,8 +26,8 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex h-full">
       <aside className="w-60 bg-sidebar text-slate-300 flex flex-col shrink-0">
         <div className="px-5 py-4 border-b border-slate-800">
-          <div className="text-white font-bold text-lg">Bot Orchestrator</div>
-          <div className="text-xs text-slate-500">Orquestrador</div>
+          <div className="text-white font-bold text-lg">Perseus</div>
+          <div className="text-xs text-slate-500">Orchestrate. Automate. Achieve.</div>
         </div>
         <nav className="flex-1 py-3">
           {NAV.map((item) => (

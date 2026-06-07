@@ -58,12 +58,12 @@ Get-NetTCPConnection -LocalPort 5173
 
 - Verificar `apps/api/.env`.
 - Confirmar `docker compose ps`.
-- Testar se `orch_postgres` esta healthy.
+- Testar se `perseus_postgres` esta healthy.
 
 ### Runner nao fica online
 
 - Verificar `RUNNER_TOKEN`.
-- Verificar `ORCHESTRATOR_WS`.
+- Verificar `PERSEUS_WS`.
 - Confirmar namespace `/runner` ativo na API.
 
 ## 5. Procedimento para subir bot de exemplo

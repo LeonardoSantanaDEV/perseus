@@ -1,8 +1,8 @@
 {
-  "name": "@orch/api",
+  "name": "@perseus/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Backend de orquestração de bots (NestJS)",
+  "description": "Perseus — Backend API (NestJS)",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

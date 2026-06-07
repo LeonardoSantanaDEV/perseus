@@ -41,7 +41,7 @@ Orquestrar bots Python de forma centralizada, com deploy de pacotes, execucao re
   - logs,
   - alertas/erros,
   - artefatos.
-- Opera com `TASK_TOKEN` e `ORCHESTRATOR_URL`.
+- Opera com `TASK_TOKEN` e `PERSEUS_URL`.
 
 ### Infra local
 

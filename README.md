@@ -1,6 +1,6 @@
-# Bot Orchestrator
+# Perseus
 
-Plataforma de orquestração de bots inspirada na BotCity. Permite cadastrar
+Plataforma de orquestração e automação de bots. Permite cadastrar
 automações, versionar pacotes, conectar runners (máquinas) em tempo real,
 disparar tarefas (manuais ou agendadas) e monitorar tudo num dashboard com ROI.
 
@@ -11,7 +11,7 @@ Veja a arquitetura completa em [`ARCHITECTURE.md`](./ARCHITECTURE.md) e a docume
 - **Front-end:** React + Vite + TypeScript + Tailwind + Recharts (`apps/web`)
 - **Back-end:** NestJS + Prisma + Socket.IO + BullMQ (`apps/api`)
 - **Runner:** Python (`apps/runner`)
-- **SDK:** Python — estilo Maestro (`packages/sdk-python`)
+- **SDK:** Python (`packages/sdk-python`)
 - **Infra local:** PostgreSQL + Redis + MinIO via Docker Compose
 
 ## Pré-requisitos
@@ -29,10 +29,10 @@ docker compose up -d
 ```
 
 Isso sobe:
-- Postgres em `localhost:5432` (user/pass: `orch`/`orch`, db `orchestrator`)
+- Postgres em `localhost:5432` (user/pass: `perseus`/`perseus`, db `perseus`)
 - Redis em `localhost:6379`
 - MinIO em `localhost:9000` (console em `http://localhost:9001`, `minioadmin`/`minioadmin`)
-- Buckets `bot-packages` e `bot-artifacts` criados automaticamente
+- Buckets `perseus-packages` e `perseus-artifacts` criados automaticamente
 
 ### 2. Backend (API)
 

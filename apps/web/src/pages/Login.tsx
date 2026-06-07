@@ -31,9 +31,9 @@ export function Login() {
         onSubmit={onSubmit}
         className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm"
       >
-        <h1 className="text-2xl font-bold text-brand mb-1">Bot Orchestrator</h1>
+        <h1 className="text-2xl font-bold text-brand mb-1">Perseus</h1>
         <p className="text-slate-500 text-sm mb-6">
-          Acesse o painel de orquestração
+          Orchestrate. Automate. Achieve.
         </p>
         {error && (
           <div className="bg-red-50 text-red-600 text-sm rounded-md px-3 py-2 mb-4">
