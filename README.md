@@ -1,6 +1,6 @@
 # Bot Orchestrator
 
-Plataforma de orquestração de bots inspirada na BotCity. Permite cadastrar
+Plataforma de orquestração de bots em Python. Permite cadastrar
 automações, versionar pacotes, conectar runners (máquinas) em tempo real,
 disparar tarefas (manuais ou agendadas) e monitorar tudo num dashboard com ROI.
 
