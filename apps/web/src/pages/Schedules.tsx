@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, CalendarClock } from 'lucide-react';
 import { api } from '../lib/api';
-import { Card, PageTitle, Button, EmptyState } from '../components/ui';
+import {
+  Card,
+  PageTitle,
+  Button,
+  EmptyState,
+  Select,
+  Input,
+  Field,
+} from '../components/ui';
 import type { Schedule, Automation, Runner } from '../lib/types';
 
 export function Schedules() {
@@ -57,27 +65,26 @@ export function Schedules() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageTitle
+        icon={CalendarClock}
         title="Agendamento"
         subtitle="Execute automações automaticamente via cron."
         actions={
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus size={16} className="inline mr-1" /> Novo Agendamento
+          <Button icon={Plus} onClick={() => setShowForm(!showForm)}>
+            Novo Agendamento
           </Button>
         }
       />
 
       {showForm && (
-        <Card className="p-5 mb-4 grid grid-cols-3 gap-4 items-end">
-          <div>
-            <label className="text-sm text-slate-600">Automação</label>
-            <select
+        <Card className="p-6 grid grid-cols-3 gap-4 items-end animate-fade-in">
+          <Field label="Automação">
+            <Select
               value={form.automationId}
               onChange={(e) =>
                 setForm({ ...form, automationId: e.target.value })
               }
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
             >
               <option value="">Selecione…</option>
               {automations.map((a) => (
@@ -85,14 +92,12 @@ export function Schedules() {
                   {a.name}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm text-slate-600">Runner (opcional)</label>
-            <select
+            </Select>
+          </Field>
+          <Field label="Runner (opcional)">
+            <Select
               value={form.runnerId}
               onChange={(e) => setForm({ ...form, runnerId: e.target.value })}
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
             >
               <option value="">Automático</option>
               {runners.map((r) => (
@@ -100,19 +105,16 @@ export function Schedules() {
                   {r.label}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm text-slate-600">
-              Cron (min hora dia mês dia-sem)
-            </label>
-            <input
+            </Select>
+          </Field>
+          <Field label="Cron (min hora dia mês dia-sem)">
+            <Input
               value={form.cron}
               onChange={(e) => setForm({ ...form, cron: e.target.value })}
               placeholder="0 8 * * *"
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1 font-mono"
+              className="font-mono"
             />
-          </div>
+          </Field>
           <div className="col-span-3 flex gap-2">
             <Button onClick={create}>Criar</Button>
             <Button variant="secondary" onClick={() => setShowForm(false)}>
@@ -122,54 +124,68 @@ export function Schedules() {
         </Card>
       )}
 
-      <Card className="p-0 overflow-hidden">
+      <Card className="overflow-hidden">
         {items.length === 0 ? (
-          <EmptyState text="Nenhum agendamento configurado." />
+          <EmptyState icon={CalendarClock} text="Nenhum agendamento configurado." />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400 border-b bg-slate-50">
-                <th className="py-3 px-4">Automação</th>
-                <th>Cron</th>
-                <th>Runner</th>
-                <th>Ativo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((s) => (
-                <tr key={s.id} className="border-b last:border-0">
-                  <td className="py-3 px-4 font-medium">
-                    {s.automation?.name}
-                  </td>
-                  <td className="font-mono text-slate-600">{s.cron}</td>
-                  <td className="text-slate-500">
-                    {s.runner?.label ?? 'Automático'}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => toggle(s)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        s.enabled
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {s.enabled ? 'Ativo' : 'Pausado'}
-                    </button>
-                  </td>
-                  <td className="text-right pr-4">
-                    <button
-                      onClick={() => remove(s.id)}
-                      className="text-slate-400 hover:text-red-600 p-1"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60">
+                  <th className="py-3 px-5 font-semibold">Automação</th>
+                  <th className="font-semibold">Cron</th>
+                  <th className="font-semibold">Runner</th>
+                  <th className="font-semibold">Ativo</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((s) => (
+                  <tr
+                    key={s.id}
+                    className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition"
+                  >
+                    <td className="py-3 px-5 font-medium text-slate-800">
+                      {s.automation?.name}
+                    </td>
+                    <td>
+                      <span className="font-mono text-xs bg-slate-100 text-slate-600 rounded-md px-2 py-1">
+                        {s.cron}
+                      </span>
+                    </td>
+                    <td className="text-slate-500">
+                      {s.runner?.label ?? 'Automático'}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => toggle(s)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ring-1 ring-inset transition ${
+                          s.enabled
+                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 hover:bg-emerald-100'
+                            : 'bg-slate-100 text-slate-600 ring-slate-500/20 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            s.enabled ? 'bg-emerald-500' : 'bg-slate-400'
+                          }`}
+                        />
+                        {s.enabled ? 'Ativo' : 'Pausado'}
+                      </button>
+                    </td>
+                    <td className="text-right pr-4">
+                      <button
+                        onClick={() => remove(s.id)}
+                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Bot, ChevronRight } from 'lucide-react';
 import { api } from '../lib/api';
-import { Card, PageTitle, Button, EmptyState } from '../components/ui';
+import {
+  Card,
+  PageTitle,
+  Button,
+  EmptyState,
+  Input,
+  Field,
+} from '../components/ui';
 import type { Automation } from '../lib/types';
 
 export function Automations() {
@@ -49,70 +56,61 @@ export function Automations() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageTitle
+        icon={Bot}
         title="Automações"
         subtitle="Cadastre suas automações, versione pacotes e configure o ROI."
         actions={
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus size={16} className="inline mr-1" /> Nova Automação
+          <Button icon={Plus} onClick={() => setShowForm(!showForm)}>
+            Nova Automação
           </Button>
         }
       />
 
       {showForm && (
-        <Card className="p-5 mb-4 grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-slate-600">Nome</label>
-            <input
+        <Card className="p-6 grid grid-cols-2 gap-4 animate-fade-in">
+          <Field label="Nome">
+            <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
+              placeholder="Cadastro de tabela de frete"
             />
-          </div>
-          <div>
-            <label className="text-sm text-slate-600">Label (único)</label>
-            <input
+          </Field>
+          <Field label="Label (único)">
+            <Input
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
               placeholder="ex: cadastro_tabela_frete"
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
             />
-          </div>
-          <div className="col-span-2">
-            <label className="text-sm text-slate-600">Descrição</label>
-            <input
+          </Field>
+          <Field label="Descrição" className="col-span-2">
+            <Input
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
+              placeholder="O que esta automação faz?"
             />
-          </div>
-          <div>
-            <label className="text-sm text-slate-600">
-              Tempo manual por item (min) — ROI
-            </label>
-            <input
+          </Field>
+          <Field label="Tempo manual por item (min) — ROI">
+            <Input
               type="number"
               value={form.manualMinutesPerItem}
               onChange={(e) =>
                 setForm({ ...form, manualMinutesPerItem: e.target.value })
               }
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
+              placeholder="5"
             />
-          </div>
-          <div>
-            <label className="text-sm text-slate-600">Custo/hora (R$) — ROI</label>
-            <input
+          </Field>
+          <Field label="Custo/hora (R$) — ROI">
+            <Input
               type="number"
               value={form.hourlyCost}
-              onChange={(e) =>
-                setForm({ ...form, hourlyCost: e.target.value })
-              }
-              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mt-1"
+              onChange={(e) => setForm({ ...form, hourlyCost: e.target.value })}
+              placeholder="50"
             />
-          </div>
+          </Field>
           <div className="col-span-2 flex gap-2">
             <Button onClick={create}>Criar automação</Button>
             <Button variant="secondary" onClick={() => setShowForm(false)}>
@@ -122,36 +120,64 @@ export function Automations() {
         </Card>
       )}
 
-      <Card className="p-0 overflow-hidden">
+      <Card className="overflow-hidden">
         {items.length === 0 ? (
-          <EmptyState text="Nenhuma automação cadastrada." />
+          <EmptyState icon={Bot} text="Nenhuma automação cadastrada." />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400 border-b bg-slate-50">
-                <th className="py-3 px-4">Nome</th>
-                <th>Label</th>
-                <th>Repositório</th>
-                <th>Versão atual</th>
-                <th>Tarefas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((a) => (
-                <tr
-                  key={a.id}
-                  onClick={() => navigate(`/automations/${a.id}`)}
-                  className="border-b last:border-0 cursor-pointer hover:bg-slate-50"
-                >
-                  <td className="py-3 px-4 font-medium text-brand">{a.name}</td>
-                  <td className="text-slate-500">{a.label}</td>
-                  <td className="text-slate-500">{a.repository?.name}</td>
-                  <td>{a.latestVersion || '—'}</td>
-                  <td>{a._count?.tasks ?? 0}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400 border-b border-slate-100 bg-slate-50/60">
+                  <th className="py-3 px-5 font-semibold">Nome</th>
+                  <th className="font-semibold">Label</th>
+                  <th className="font-semibold">Repositório</th>
+                  <th className="font-semibold">Versão atual</th>
+                  <th className="font-semibold">Tarefas</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((a) => (
+                  <tr
+                    key={a.id}
+                    onClick={() => navigate(`/automations/${a.id}`)}
+                    className="border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50/70 transition group"
+                  >
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-3">
+                        <div className="grid place-items-center w-8 h-8 rounded-lg bg-brand/10 text-brand">
+                          <Bot size={16} />
+                        </div>
+                        <span className="font-semibold text-slate-800 group-hover:text-brand transition">
+                          {a.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="text-slate-500 font-mono text-xs">{a.label}</td>
+                    <td className="text-slate-500">{a.repository?.name}</td>
+                    <td>
+                      {a.latestVersion ? (
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          v{a.latestVersion}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="text-slate-600 font-medium">
+                      {a._count?.tasks ?? 0}
+                    </td>
+                    <td className="text-right pr-5">
+                      <ChevronRight
+                        size={16}
+                        className="text-slate-300 group-hover:text-brand inline transition"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>
