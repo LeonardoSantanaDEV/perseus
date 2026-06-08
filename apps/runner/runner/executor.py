@@ -30,6 +30,30 @@ def _find_entrypoint(src_dir: str, entrypoint: str) -> str:
     raise FileNotFoundError(f"Entrypoint '{entrypoint}' não encontrado no pacote")
 
 
+def _safe_extract(zip_file: zipfile.ZipFile, dest_dir: str) -> None:
+    """
+    Extrai o zip protegendo contra Zip Slip (path traversal) e symlinks.
+    Cada entrada deve permanecer dentro de dest_dir.
+    """
+    dest_root = os.path.realpath(dest_dir)
+    for member in zip_file.infolist():
+        # Bloqueia caminhos absolutos e traversal
+        name = member.filename
+        if name.startswith(("/", "\\")) or ".." in name.replace("\\", "/").split("/"):
+            raise ValueError(f"Entrada de zip insegura (path traversal): {name}")
+
+        target = os.path.realpath(os.path.join(dest_root, name))
+        if target != dest_root and not target.startswith(dest_root + os.sep):
+            raise ValueError(f"Entrada de zip fora do diretório de destino: {name}")
+
+        # Bloqueia symlinks embutidos no zip (modo Unix nos 16 bits altos)
+        mode = member.external_attr >> 16
+        if mode and (mode & 0o170000) == 0o120000:
+            raise ValueError(f"Symlink não permitido no pacote: {name}")
+
+    zip_file.extractall(dest_dir)
+
+
 def run_task(config: Config, task: dict, emit_log: "LogFn") -> int:
     task_id = task["taskId"]
     work = os.path.abspath(os.path.join(config.work_dir, task_id))
@@ -61,7 +85,7 @@ def run_task(config: Config, task: dict, emit_log: "LogFn") -> int:
     log.info("[%s] %s", task_id[:8], msg)
     emit_log(msg, "info")
     with zipfile.ZipFile(zip_path) as z:
-        z.extractall(src_dir)
+        _safe_extract(z, src_dir)
 
     entrypoint_path = _find_entrypoint(src_dir, task.get("entrypoint", "main.py"))
     run_dir = os.path.dirname(entrypoint_path)

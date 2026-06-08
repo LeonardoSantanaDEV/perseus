@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Copy, RefreshCw, Trash2, Plus, Server, Check } from 'lucide-react';
+import {
+  Copy,
+  RefreshCw,
+  Trash2,
+  Plus,
+  Server,
+  Check,
+  Lock,
+  KeyRound,
+  X,
+  AlertTriangle,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import { getDashboardSocket } from '../lib/socket';
 import {
@@ -11,13 +22,14 @@ import {
   Input,
   Field,
 } from '../components/ui';
-import type { Runner } from '../lib/types';
+import type { Runner, RunnerWithToken } from '../lib/types';
 
 export function Runners() {
   const [runners, setRunners] = useState<Runner[]>([]);
   const [label, setLabel] = useState('');
   const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [revealed, setRevealed] = useState<RunnerWithToken | null>(null);
 
   async function load() {
     const res = await api.get('/runners');
@@ -39,14 +51,22 @@ export function Runners() {
 
   async function create() {
     if (!label.trim()) return;
-    await api.post('/runners', { label });
+    const res = await api.post<RunnerWithToken>('/runners', { label });
     setLabel('');
     setCreating(false);
+    setRevealed(res.data);
     load();
   }
 
   async function regenerate(id: string) {
-    await api.post(`/runners/${id}/regenerate-token`);
+    if (
+      !confirm(
+        'Regenerar o token? O token atual deixará de funcionar imediatamente.',
+      )
+    )
+      return;
+    const res = await api.post<RunnerWithToken>(`/runners/${id}/regenerate-token`);
+    setRevealed(res.data);
     load();
   }
 
@@ -56,10 +76,11 @@ export function Runners() {
     load();
   }
 
-  function copyToken(token: string) {
-    navigator.clipboard.writeText(token);
-    setCopied(token);
-    setTimeout(() => setCopied(null), 1500);
+  function copyToken() {
+    if (!revealed) return;
+    navigator.clipboard.writeText(revealed.token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   return (
@@ -74,6 +95,47 @@ export function Runners() {
           </Button>
         }
       />
+
+      {/* Revelação do token — exibido uma única vez */}
+      {revealed && (
+        <Card className="p-5 border-amber-300 bg-amber-50/60 animate-fade-in">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="grid place-items-center w-9 h-9 rounded-xl bg-amber-100 text-amber-600 shrink-0">
+                <KeyRound size={18} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800">
+                  Token do runner “{revealed.label}”
+                </h3>
+                <p className="text-xs text-amber-700 flex items-center gap-1 mt-0.5">
+                  <AlertTriangle size={12} />
+                  Copie agora — por segurança ele não será exibido novamente.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setRevealed(null)}
+              className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition"
+              title="Fechar"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <code className="flex-1 font-mono text-sm bg-white border border-amber-200 rounded-lg px-3 py-2 text-slate-700 break-all">
+              {revealed.token}
+            </code>
+            <Button
+              icon={copied ? Check : Copy}
+              variant="secondary"
+              onClick={copyToken}
+            >
+              {copied ? 'Copiado' : 'Copiar'}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {creating && (
         <Card className="p-5 flex gap-3 items-end animate-fade-in">
@@ -122,18 +184,13 @@ export function Runners() {
                     </td>
                     <td className="text-slate-500">{r.host || '—'}</td>
                     <td>
-                      <button
-                        onClick={() => copyToken(r.token)}
-                        className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-500 hover:text-brand bg-slate-50 hover:bg-brand/5 rounded-md px-2 py-1 transition"
-                        title="Copiar token"
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs font-mono text-slate-400"
+                        title="O token fica oculto por segurança. Use “Regenerar” para emitir um novo."
                       >
-                        {copied === r.token ? (
-                          <Check size={12} className="text-emerald-500" />
-                        ) : (
-                          <Copy size={12} />
-                        )}
-                        {r.token.slice(0, 14)}…
-                      </button>
+                        <Lock size={12} />
+                        oculto
+                      </span>
                     </td>
                     <td className="text-slate-400 text-xs">
                       {r.lastSeen
@@ -144,7 +201,7 @@ export function Runners() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => regenerate(r.id)}
-                          className="text-slate-400 hover:text-brand hover:bg-brand/5 p-1.5 rounded-lg transition"
+                          className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition"
                           title="Regenerar token"
                         >
                           <RefreshCw size={15} />

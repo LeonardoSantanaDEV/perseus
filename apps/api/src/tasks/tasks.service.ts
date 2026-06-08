@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, Task, TaskState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -203,6 +204,38 @@ export class TasksService {
     });
     for (const t of queued) {
       await this.tryDispatch(t.id);
+    }
+  }
+
+  /**
+   * Expira tarefas presas em DISPATCHED/RUNNING além do tempo máximo.
+   * Evita que um bot travado mantenha o runner ocupado para sempre.
+   */
+  @Interval(60_000)
+  async sweepStuckTasks() {
+    const maxSeconds = parseInt(
+      process.env.TASK_MAX_RUNTIME_SECONDS || '3600',
+      10,
+    );
+    const threshold = new Date(Date.now() - maxSeconds * 1000);
+    const stuck = await this.prisma.task.findMany({
+      where: {
+        state: { in: ['DISPATCHED', 'RUNNING'] },
+        OR: [
+          { startedAt: { lt: threshold } },
+          { startedAt: null, createdAt: { lt: threshold } },
+        ],
+      },
+      take: 100,
+    });
+    for (const task of stuck) {
+      this.logger.warn(
+        `Tarefa ${task.id} excedeu ${maxSeconds}s; marcando como TIMEOUT`,
+      );
+      if (task.runnerId) this.realtime.cancelOnRunner(task.runnerId, task.id);
+      await this.finalize(task.id, 'TIMEOUT', {
+        message: `Tempo máximo de execução (${maxSeconds}s) excedido`,
+      });
     }
   }
 

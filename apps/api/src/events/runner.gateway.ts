@@ -12,8 +12,10 @@ import { Namespace, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { TasksService } from '../tasks/tasks.service';
+import { corsOrigins } from '../config/security';
+import { hashRunnerToken } from '../runners/token.util';
 
-@WebSocketGateway({ namespace: '/runner', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/runner', cors: { origin: corsOrigins() } })
 export class RunnerGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -37,7 +39,7 @@ export class RunnerGateway
       return;
     }
     const runner = await this.prisma.runner.findUnique({
-      where: { token: String(token) },
+      where: { tokenHash: hashRunnerToken(String(token)) },
     });
     if (!runner) {
       this.logger.warn('Runner com token inválido tentou conectar');

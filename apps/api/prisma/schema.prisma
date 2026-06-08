@@ -117,7 +117,7 @@ model BotVersion {
 model Runner {
   id          String       @id @default(cuid())
   label       String
-  token       String       @unique
+  tokenHash   String       @unique
   status      RunnerStatus @default(OFFLINE)
   host        String?
   os          String?

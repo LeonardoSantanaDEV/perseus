@@ -1,3 +1,5 @@
+import os
+import shutil
 import threading
 import time
 import traceback
@@ -93,6 +95,19 @@ class RunnerAgent:
                 {"taskId": task_id, "exitCode": exit_code},
                 namespace="/runner",
             )
+            self._cleanup_work_dir(task_id)
+
+    def _cleanup_work_dir(self, task_id: str):
+        """Remove o diretório de trabalho da tarefa para não encher o disco."""
+        if self.config.keep_work_dir:
+            return
+        work = os.path.abspath(os.path.join(self.config.work_dir, task_id))
+        try:
+            if os.path.isdir(work):
+                shutil.rmtree(work, ignore_errors=True)
+                log.info("Diretório de trabalho limpo: %s", work)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Falha ao limpar work_dir %s: %s", work, e)
 
     def _heartbeat_loop(self):
         while True:

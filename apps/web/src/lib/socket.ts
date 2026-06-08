@@ -9,7 +9,15 @@ export function getDashboardSocket(): Socket {
     socket = io(`${WS_URL}/dashboard`, {
       transports: ['websocket'],
       autoConnect: true,
+      auth: (cb) => cb({ token: localStorage.getItem('token') || '' }),
     });
   }
   return socket;
+}
+
+export function resetDashboardSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 }

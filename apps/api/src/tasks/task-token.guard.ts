@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { resolveJwtSecret } from '../config/security';
 
 /**
  * Autentica chamadas vindas do SDK do bot usando o TASK_TOKEN
@@ -22,7 +23,7 @@ export class TaskTokenGuard implements CanActivate {
 
     try {
       const payload = this.jwt.verify(token, {
-        secret: process.env.JWT_SECRET || 'dev-secret',
+        secret: resolveJwtSecret(),
       });
       if (payload.typ !== 'task') {
         throw new UnauthorizedException('Token inválido para esta operação');

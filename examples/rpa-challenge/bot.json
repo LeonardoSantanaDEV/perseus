@@ -1,0 +1,10 @@
+{
+  "name": "rpa-challenge",
+  "version": "1.0.0",
+  "description": "Preenche automaticamente o RPA Challenge (rpachallenge.com)",
+  "entrypoint": "main.py",
+  "tech": "python",
+  "params": {
+    "headless": "true"
+  }
+}

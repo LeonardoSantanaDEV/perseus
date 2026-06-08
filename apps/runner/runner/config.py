@@ -19,6 +19,7 @@ class Config:
     sdk_path: str
     host: str
     os_name: str
+    keep_work_dir: bool
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -38,4 +39,6 @@ class Config:
             sdk_path=os.getenv("SDK_PATH", "").strip(),
             host=socket.gethostname(),
             os_name=f"{platform.system()} {platform.release()}",
+            keep_work_dir=os.getenv("KEEP_WORK_DIR", "false").strip().lower()
+            in ("1", "true", "yes"),
         )

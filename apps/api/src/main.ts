@@ -6,6 +6,7 @@ import * as winston from 'winston';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppModule } from './app.module';
+import { assertSecureConfig, corsOrigins } from './config/security';
 
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
@@ -47,6 +48,9 @@ const winstonLogger = WinstonModule.createLogger({
 });
 
 async function bootstrap() {
+  // Falha rápido se a configuração sensível estiver insegura em produção.
+  assertSecureConfig(winstonLogger);
+
   const app = await NestFactory.create(AppModule, { logger: winstonLogger });
 
   app.setGlobalPrefix('api');
@@ -54,12 +58,11 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:5173';
-  app.enableCors({ origin: webOrigin.split(','), credentials: true });
+  app.enableCors({ origin: corsOrigins(), credentials: true });
 
   const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);

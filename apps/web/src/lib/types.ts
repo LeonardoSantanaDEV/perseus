@@ -8,11 +8,16 @@ export interface User {
 export interface Runner {
   id: string;
   label: string;
-  token: string;
   status: 'ONLINE' | 'OFFLINE' | 'BUSY';
   host?: string;
   os?: string;
   lastSeen?: string;
+}
+
+// Retornado apenas na criação/regeneração — contém o token em texto puro
+// que deve ser copiado imediatamente (não é exibido novamente).
+export interface RunnerWithToken extends Runner {
+  token: string;
 }
 
 export interface Automation {
