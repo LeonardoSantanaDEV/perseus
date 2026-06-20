@@ -98,10 +98,14 @@ class RunnerAgent:
             self._cleanup_work_dir(task_id)
 
     def _cleanup_work_dir(self, task_id: str):
-        """Remove o diretório de trabalho da tarefa para não encher o disco."""
+        """Remove apenas o diretório efêmero da execução.
+
+        O cache de ambientes (``_work/envs``) é preservado de propósito para
+        reaproveitar o venv entre execuções da mesma automação.
+        """
         if self.config.keep_work_dir:
             return
-        work = os.path.abspath(os.path.join(self.config.work_dir, task_id))
+        work = os.path.abspath(os.path.join(self.config.work_dir, "runs", task_id))
         try:
             if os.path.isdir(work):
                 shutil.rmtree(work, ignore_errors=True)

@@ -136,7 +136,7 @@ export function AutomationDetail() {
             <Input
               value={version}
               onChange={(e) => setVersion(e.target.value)}
-              placeholder="Versão (opcional, ou lida do bot.json)"
+              placeholder="Versão (ex: 1.0.0)"
             />
             <Button onClick={upload} disabled={uploading} icon={Upload}>
               {uploading ? 'Enviando…' : 'Fazer deploy'}

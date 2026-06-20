@@ -19,15 +19,15 @@ Portas de **entrada** não são necessárias — o runner sempre inicia a conex�
 
 ---
 
-## 1. Gerar o token no portal
+## 1. Instalar o runner
 
-1. Acesse o Perseus → **Runners** → **Novo Runner**.
-2. Dê um nome que identifique a máquina (ex: `MDBWINRPA01`, `EC2-SA-EAST-1-A`).
-3. **Copie o token imediatamente** — ele aparece apenas uma vez.
+A configuração (URL + token) é feita por um **wizard** (`python -m runner.setup`):
+ele autentica com seu **login/senha** no Perseus e grava o `.env` automaticamente.
 
----
-
-## 2. Instalar o runner
+- **Nova runner** — o wizard cria a runner no portal e **salva o token sozinho**
+  (requer usuário **ADMIN** ou **OPERATOR**). Não há cópia manual de token.
+- **Runner existente** — você cola o token da máquina. O token só é mostrado na
+  criação/regeneração e é **obtido com o administrador** da aplicação.
 
 ### Windows
 
@@ -48,23 +48,14 @@ python -m venv .venv
 # 3. Instalar dependências
 pip install -r requirements.txt
 
-# 4. Configurar .env
-copy .env.example .env
-notepad .env
+# 4. Provisionar (wizard interativo)
+python -m runner.setup
 ```
 
-Edite o `.env` com os valores da sua instalação:
-
-```env
-PERSEUS_WS=https://seu-perseus.exemplo.com
-PERSEUS_API=https://seu-perseus.exemplo.com/api
-RUNNER_TOKEN=rnr_xxxxxxxxxxxxxxxxxxxx
-HEARTBEAT_INTERVAL=10
-WORK_DIR=C:\Perseus\runner\_work
-PYTHON_BIN=python
-SDK_PATH=C:\Perseus\packages\sdk-python
-KEEP_WORK_DIR=false
-```
+O wizard pergunta a URL do Perseus, faz login e grava `PERSEUS_WS`,
+`PERSEUS_API` e `RUNNER_TOKEN` no `.env`. Os demais valores
+(`WORK_DIR`, `PYTHON_BIN`, `SDK_PATH`, etc.) herdam os defaults do
+`.env.example` — ajuste no `.env` depois, se necessário.
 
 ### Linux (Ubuntu/Debian)
 
@@ -83,21 +74,13 @@ source .venv/bin/activate
 # 4. Instalar dependências
 pip install -r requirements.txt
 
-# 5. Configurar .env
-cp .env.example .env
-nano .env
+# 5. Provisionar (wizard interativo)
+python3 -m runner.setup
 ```
 
-```env
-PERSEUS_WS=https://seu-perseus.exemplo.com
-PERSEUS_API=https://seu-perseus.exemplo.com/api
-RUNNER_TOKEN=rnr_xxxxxxxxxxxxxxxxxxxx
-HEARTBEAT_INTERVAL=10
-WORK_DIR=/opt/perseus/runner/_work
-PYTHON_BIN=python3
-SDK_PATH=/opt/perseus/packages/sdk-python
-KEEP_WORK_DIR=false
-```
+O wizard pergunta a URL do Perseus, faz login e grava `PERSEUS_WS`,
+`PERSEUS_API` e `RUNNER_TOKEN` no `.env`. Ajuste `WORK_DIR`/`SDK_PATH`
+no `.env` depois, se precisar de caminhos diferentes dos defaults.
 
 ---
 
@@ -288,7 +271,7 @@ C:\Perseus\apps\runner\logs\runner-error.log
 
 - [ ] Python 3.10+ instalado
 - [ ] `.venv` criado e dependências instaladas
-- [ ] `.env` configurado (`PERSEUS_WS`, `PERSEUS_API`, `RUNNER_TOKEN`)
+- [ ] Provisionado via `python -m runner.setup` (gera/grava `RUNNER_TOKEN` no `.env`)
 - [ ] Teste manual passou (runner aparece ONLINE no portal)
 - [ ] Serviço registrado (Task Scheduler / systemd)
 - [ ] Serviço inicia sozinho após reiniciar a VM (validar com reboot)

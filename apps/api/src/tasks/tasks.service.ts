@@ -128,7 +128,18 @@ export class TasksService {
     return task;
   }
 
-  /** Tenta enviar uma tarefa QUEUED para um runner. */
+  /**
+   * Tenta enviar uma tarefa QUEUED para um runner.
+   *
+   * Usa dois "claims" atômicos para evitar corrida quando vários dispatches
+   * concorrem (ex.: dois finishes simultâneos liberando runners):
+   *  1. Reivindica a tarefa (QUEUED -> DISPATCHED) com `updateMany` condicional;
+   *     só a transação vencedora segue, mantendo a ordem da fila intacta.
+   *  2. Reivindica o runner (ONLINE -> BUSY) da mesma forma, garantindo o lock
+   *     single-task (no máximo 1 tarefa por runner).
+   * Qualquer falha após um claim faz rollback do estado, devolvendo a tarefa à
+   * fila (preservando `createdAt`) e o runner à disponibilidade.
+   */
   async tryDispatch(taskId: string): Promise<boolean> {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
@@ -136,7 +147,7 @@ export class TasksService {
     });
     if (!task || task.state !== 'QUEUED' || !task.botVersion) return false;
 
-    // Escolhe runner: o atribuído ou um ONLINE livre
+    // Escolhe runner candidato: o atribuído ou um ONLINE livre.
     let runnerId = task.runnerId;
     if (!runnerId) {
       const free = await this.prisma.runner.findFirst({
@@ -145,47 +156,61 @@ export class TasksService {
       });
       if (!free) return false;
       runnerId = free.id;
-    } else {
-      const runner = await this.prisma.runner.findUnique({
-        where: { id: runnerId },
-      });
-      if (!runner || runner.status === 'OFFLINE') return false;
     }
 
-    const downloadUrl = await this.storage.getDownloadUrl(
-      this.storage.packagesBucket,
-      task.botVersion.storageKey,
-      3600,
-    );
-    const taskToken = this.jwt.sign(
-      { sub: task.id, typ: 'task' },
-      { expiresIn: process.env.TASK_TOKEN_EXPIRES_IN || '12h' },
-    );
-
-    const delivered = this.realtime.dispatchToRunner(runnerId, {
-      taskId: task.id,
-      automationId: task.automationId,
-      version: task.botVersion.version,
-      entrypoint: task.botVersion.entrypoint,
-      pythonVersion: task.botVersion.pythonVersion,
-      downloadUrl,
-      params: task.params ?? {},
-      taskToken,
+    // Claim 1: reivindica a tarefa. Se outra rotina já a pegou, count = 0.
+    const claimedTask = await this.prisma.task.updateMany({
+      where: { id: task.id, state: 'QUEUED' },
+      data: { state: 'DISPATCHED', runnerId },
     });
+    if (claimedTask.count !== 1) return false;
 
-    if (!delivered) {
-      this.logger.warn(`Tarefa ${taskId}: runner ${runnerId} não recebeu o dispatch (desconectado?)`);
+    // Claim 2: reivindica o runner (lock single-task). Só vence se estava ONLINE.
+    const claimedRunner = await this.prisma.runner.updateMany({
+      where: { id: runnerId, status: 'ONLINE' },
+      data: { status: 'BUSY' },
+    });
+    if (claimedRunner.count !== 1) {
+      // Runner foi ocupado por outra tarefa nesse meio-tempo: devolve à fila.
+      await this.requeue(task.id, task.runnerId);
       return false;
     }
 
-    await this.prisma.task.update({
-      where: { id: task.id },
-      data: { state: 'DISPATCHED', runnerId },
-    });
-    await this.prisma.runner.update({
-      where: { id: runnerId },
-      data: { status: 'BUSY' },
-    });
+    try {
+      const downloadUrl = await this.storage.getDownloadUrl(
+        this.storage.packagesBucket,
+        task.botVersion.storageKey,
+        3600,
+      );
+      const taskToken = this.jwt.sign(
+        { sub: task.id, typ: 'task' },
+        { expiresIn: process.env.TASK_TOKEN_EXPIRES_IN || '12h' },
+      );
+
+      const delivered = this.realtime.dispatchToRunner(runnerId, {
+        taskId: task.id,
+        automationId: task.automationId,
+        version: task.botVersion.version,
+        entrypoint: task.botVersion.entrypoint,
+        pythonVersion: task.botVersion.pythonVersion,
+        downloadUrl,
+        params: task.params ?? {},
+        taskToken,
+      });
+
+      if (!delivered) {
+        this.logger.warn(
+          `Tarefa ${taskId}: runner ${runnerId} não recebeu o dispatch (desconectado?)`,
+        );
+        await this.requeue(task.id, task.runnerId, runnerId);
+        return false;
+      }
+    } catch (err) {
+      // Falha ao montar URL/token: desfaz os claims para não travar a fila.
+      await this.requeue(task.id, task.runnerId, runnerId);
+      throw err;
+    }
+
     this.realtime.emitDashboard('runner.status', {
       id: runnerId,
       status: 'BUSY',
@@ -195,7 +220,33 @@ export class TasksService {
     return true;
   }
 
-  /** Chamado quando um runner conecta: tenta despachar a fila. */
+  /**
+   * Desfaz um dispatch reivindicado: devolve a tarefa para QUEUED (restaurando o
+   * runner originalmente atribuído) e libera o runner reivindicado, se houver.
+   */
+  private async requeue(
+    taskId: string,
+    originalRunnerId: string | null,
+    claimedRunnerId?: string,
+  ) {
+    await this.prisma.task.updateMany({
+      where: { id: taskId, state: 'DISPATCHED' },
+      data: { state: 'QUEUED', runnerId: originalRunnerId },
+    });
+    if (claimedRunnerId) {
+      await this.prisma.runner.updateMany({
+        where: { id: claimedRunnerId, status: 'BUSY' },
+        data: { status: 'ONLINE' },
+      });
+    }
+  }
+
+  /**
+   * Drena a fila: despacha tarefas QUEUED na ordem de prioridade e, em empate,
+   * por data de criação (mais antiga primeiro). Processado serialmente para que
+   * cada `tryDispatch` veja o estado dos runners atualizado pelo anterior.
+   * Chamado ao conectar um runner, ao liberar um runner e periodicamente.
+   */
   async dispatchQueued() {
     const queued = await this.prisma.task.findMany({
       where: { state: 'QUEUED' },
@@ -205,6 +256,16 @@ export class TasksService {
     for (const t of queued) {
       await this.tryDispatch(t.id);
     }
+  }
+
+  /**
+   * Rede de segurança: re-tenta a fila periodicamente. Cobre casos em que a
+   * tarefa foi criada sem runner disponível e nenhum evento de conexão/liberação
+   * disparou depois (ex.: runner já estava online mas ocupado).
+   */
+  @Interval(30_000)
+  async drainQueue() {
+    await this.dispatchQueued();
   }
 
   /**
@@ -415,6 +476,8 @@ export class TasksService {
         status: 'ONLINE',
       });
     }
+    // Runner ficou livre: puxa a próxima tarefa QUEUED (a mais antiga primeiro).
+    await this.dispatchQueued();
   }
 
   private async emitUpdate(taskId: string) {

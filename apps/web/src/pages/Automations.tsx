@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Bot, ChevronRight } from 'lucide-react';
+import { Plus, Bot, ChevronRight, Play } from 'lucide-react';
 import { api } from '../lib/api';
 import {
   Card,
@@ -16,6 +17,12 @@ export function Automations() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Automation[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({
     name: '',
     label: '',
@@ -32,6 +39,64 @@ export function Automations() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    function close() {
+      setOpenMenuId(null);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [openMenuId]);
+
+  function toggleMenu(automationId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (openMenuId === automationId) {
+      setOpenMenuId(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const menuWidth = 176; // w-44
+    setMenuPos({
+      top: rect.bottom + 4,
+      left: Math.max(8, rect.right - menuWidth),
+    });
+    setOpenMenuId(automationId);
+  }
+
+  async function dispatch(automationId: string) {
+    setDispatchingId(automationId);
+    try {
+      const res = await api.post('/tasks', {
+        automationId,
+        params: {},
+      });
+      setOpenMenuId(null);
+      navigate(`/tasks/${res.data.id}`);
+    } catch (e: any) {
+      const status = e.response?.status;
+      const msg =
+        e.response?.data?.message || e.message || 'Falha ao disparar a tarefa';
+      if (status === 401) {
+        alert('Sessão expirada. Você será redirecionado para o login.');
+      } else {
+        alert(Array.isArray(msg) ? msg.join('\n') : msg);
+      }
+    } finally {
+      setDispatchingId(null);
+    }
+  }
 
   async function create() {
     if (!form.name.trim() || !form.label.trim()) return;
@@ -168,10 +233,21 @@ export function Automations() {
                       {a._count?.tasks ?? 0}
                     </td>
                     <td className="text-right pr-5">
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-300 group-hover:text-brand inline transition"
-                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          title="Disparar tarefa"
+                          disabled={!a.latestVersion}
+                          onClick={(e) => toggleMenu(a.id, e)}
+                          className="grid place-items-center w-8 h-8 rounded-lg text-slate-400 hover:bg-brand/10 hover:text-brand transition disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 disabled:cursor-not-allowed"
+                        >
+                          <Play size={16} />
+                        </button>
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-brand inline transition"
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -180,6 +256,27 @@ export function Automations() {
           </div>
         )}
       </Card>
+
+      {openMenuId &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPos.top, left: menuPos.left }}
+            className="fixed z-50 w-44 rounded-lg border border-slate-200 bg-white shadow-lg py-1 animate-fade-in"
+          >
+            <button
+              type="button"
+              disabled={dispatchingId === openMenuId}
+              onClick={() => dispatch(openMenuId)}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <Play size={14} className="text-brand" />
+              {dispatchingId === openMenuId ? 'Disparando…' : 'Disparar tarefa'}
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

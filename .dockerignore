@@ -1,0 +1,39 @@
+# Mantém o contexto de build enxuto
+**/node_modules
+**/dist
+**/build
+**/.venv
+**/venv
+**/__pycache__
+**/*.egg-info
+
+# Env locais (nunca enviar segredos para a imagem)
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Runtime do runner
+apps/runner/_work
+apps/runner/.runner-id
+
+# Logs
+**/logs
+**/*.log
+
+# Dados de volume (caso existam localmente)
+postgres-data/
+minio-data/
+storage-data/
+
+# Git / IDE / OS
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docs e scripts não usados no build de imagem
+docs/
+examples/
+*.md

@@ -12,6 +12,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CreateScheduleDto, UpdateScheduleDto } from './dto';
 
+// Fuso fixo dos agendamentos: o cron é interpretado neste fuso, independente
+// do fuso do servidor/container (que em Docker normalmente é UTC). O preview
+// no frontend usa o mesmo fuso para os horários baterem.
+const SCHEDULE_TZ = 'America/Sao_Paulo';
+
 @Injectable()
 export class SchedulesService implements OnModuleInit {
   private readonly logger = new Logger(SchedulesService.name);
@@ -113,7 +118,8 @@ export class SchedulesService implements OnModuleInit {
   private register(id: string, cron: string) {
     const name = this.jobName(id);
     if (this.registry.doesExist('cron', name)) this.unregister(id);
-    const job = new CronJob(cron, () => this.fire(id));
+    // 5º argumento = timeZone: garante que o cron rode no fuso de Brasília.
+    const job = new CronJob(cron, () => this.fire(id), null, false, SCHEDULE_TZ);
     // cast: @nestjs/schedule empacota sua própria versão de "cron"
     this.registry.addCronJob(name, job as any);
     job.start();

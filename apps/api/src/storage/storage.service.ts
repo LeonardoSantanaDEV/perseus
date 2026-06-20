@@ -10,26 +10,42 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 @Injectable()
 export class StorageService {
   private client: S3Client;
+  private signer: S3Client;
   readonly packagesBucket: string;
   readonly artifactsBucket: string;
-  private readonly publicEndpoint: string;
 
   constructor() {
+    const internalEndpoint = process.env.S3_ENDPOINT || 'http://localhost:9000';
+    const publicEndpoint = process.env.S3_PUBLIC_ENDPOINT || internalEndpoint;
+    const region = process.env.S3_REGION || 'us-east-1';
+    const forcePathStyle = (process.env.S3_FORCE_PATH_STYLE || 'true') === 'true';
+    const credentials = {
+      accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
+      secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
+    };
+
+    // Cliente interno: upload/delete a partir da API (rede interna do Docker,
+    // ex.: http://minio:9000).
     this.client = new S3Client({
-      region: process.env.S3_REGION || 'us-east-1',
-      endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-      forcePathStyle: (process.env.S3_FORCE_PATH_STYLE || 'true') === 'true',
-      credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
-        secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
-      },
+      region,
+      endpoint: internalEndpoint,
+      forcePathStyle,
+      credentials,
     });
+
+    // Cliente público: presigna URLs de download com o host que o runner/browser
+    // realmente acessam (ex.: http://localhost:9000). O host faz parte da
+    // assinatura SigV4, então presignar já com o endpoint público mantém a
+    // assinatura válida — reescrever o host depois a invalidaria.
+    this.signer = new S3Client({
+      region,
+      endpoint: publicEndpoint,
+      forcePathStyle,
+      credentials,
+    });
+
     this.packagesBucket = process.env.S3_BUCKET_PACKAGES || 'perseus-packages';
     this.artifactsBucket = process.env.S3_BUCKET_ARTIFACTS || 'perseus-artifacts';
-    this.publicEndpoint =
-      process.env.S3_PUBLIC_ENDPOINT ||
-      process.env.S3_ENDPOINT ||
-      'http://localhost:9000';
   }
 
   async upload(
@@ -53,26 +69,16 @@ export class StorageService {
     key: string,
     expiresIn = 3600,
   ): Promise<string> {
-    const url = await getSignedUrl(
-      this.client,
+    return getSignedUrl(
+      this.signer,
       new GetObjectCommand({ Bucket: bucket, Key: key }),
       { expiresIn },
     );
-    return this.rewriteHost(url);
   }
 
   async delete(bucket: string, key: string): Promise<void> {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: bucket, Key: key }),
     );
-  }
-
-  // Garante que a URL assinada use o endpoint público (acessível pelo runner)
-  private rewriteHost(url: string): string {
-    const internal = process.env.S3_ENDPOINT || 'http://localhost:9000';
-    if (this.publicEndpoint && url.startsWith(internal)) {
-      return this.publicEndpoint + url.slice(internal.length);
-    }
-    return url;
   }
 }

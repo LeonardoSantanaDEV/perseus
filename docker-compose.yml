@@ -1,23 +1,37 @@
+# Perseus — stack completa (infra + API + Web) em um único comando.
+#
+#   Primeira execução:  docker compose up -d --build
+#   Execuções seguintes: docker compose up -d
+#   Reset total:         docker compose down -v
+#
+# As variáveis abaixo têm defaults de desenvolvimento e podem ser
+# sobrescritas por um arquivo .env na raiz (veja .env.example).
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: perseus_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: perseus
-      POSTGRES_PASSWORD: perseus
-      POSTGRES_DB: perseus
+      POSTGRES_USER: ${POSTGRES_USER:-perseus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-perseus}
+      POSTGRES_DB: ${POSTGRES_DB:-perseus}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-perseus} -d ${POSTGRES_DB:-perseus}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   redis:
     image: redis:7-alpine
     container_name: perseus_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
 
   minio:
     image: minio/minio:latest
@@ -25,27 +39,84 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio-data:/data
 
-  # Cria o bucket inicial automaticamente
+  # Cria os buckets iniciais automaticamente
   minio-init:
     image: minio/mc:latest
     depends_on:
       - minio
     entrypoint: >
       /bin/sh -c "
-      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'aguardando minio...' && sleep 2; done;
-      /usr/bin/mc mb -p local/perseus-packages;
-      /usr/bin/mc mb -p local/perseus-artifacts;
+      until (/usr/bin/mc alias set local http://minio:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin}) do echo 'aguardando minio...' && sleep 2; done;
+      /usr/bin/mc mb -p local/${S3_BUCKET_PACKAGES:-perseus-packages};
+      /usr/bin/mc mb -p local/${S3_BUCKET_ARTIFACTS:-perseus-artifacts};
       exit 0;
       "
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: perseus_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-perseus}:${POSTGRES_PASSWORD:-perseus}@postgres:5432/${POSTGRES_DB:-perseus}?schema=public
+      # Origem do navegador (onde o Web é servido) — usado no CORS
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-troque-em-producao}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      TASK_TOKEN_EXPIRES_IN: ${TASK_TOKEN_EXPIRES_IN:-12h}
+      LOGIN_THROTTLE_WINDOW_MS: ${LOGIN_THROTTLE_WINDOW_MS:-60000}
+      LOGIN_THROTTLE_MAX: ${LOGIN_THROTTLE_MAX:-10}
+      TASK_MAX_RUNTIME_SECONDS: ${TASK_MAX_RUNTIME_SECONDS:-3600}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # S3 interno (rede Docker) para upload/delete
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET_PACKAGES: ${S3_BUCKET_PACKAGES:-perseus-packages}
+      S3_BUCKET_ARTIFACTS: ${S3_BUCKET_ARTIFACTS:-perseus-artifacts}
+      S3_FORCE_PATH_STYLE: "true"
+      # Endpoint público acessível pelo runner/browser (host)
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      RUNNER_OFFLINE_AFTER_SECONDS: ${RUNNER_OFFLINE_AFTER_SECONDS:-30}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - api-logs:/app/apps/api/logs
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Embutidas no bundle em build-time (acesso a partir do navegador)
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+        VITE_WS_URL: ${VITE_WS_URL:-http://localhost:3000}
+    container_name: perseus_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
 
 volumes:
   postgres-data:
   minio-data:
+  api-logs:

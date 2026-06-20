@@ -30,9 +30,10 @@ export class UpdateScheduleDto {
   @IsString()
   cron?: string;
 
+  // null => volta para "Automático" (limpa o runner fixo); undefined => não altera
   @IsOptional()
   @IsString()
-  runnerId?: string;
+  runnerId?: string | null;
 
   @IsOptional()
   @IsObject()
