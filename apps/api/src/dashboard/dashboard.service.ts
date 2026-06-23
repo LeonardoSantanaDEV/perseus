@@ -6,7 +6,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
-  async summary(workspaceId: string) {
+  async summary(workspaceId: string, accessibleIds?: string[] | null) {
+    // Filtros de acesso: quando accessibleIds não é null, restringe tudo às
+    // automações do(s) grupo(s) do usuário (tarefas, eventos, ROI, agendamentos).
+    const taskAcc = accessibleIds ? { automationId: { in: accessibleIds } } : {};
+    const taskWhere = { workspaceId, ...taskAcc };
+    const eventTaskWhere = { workspaceId, ...taskAcc };
+
     const [
       totalTasks,
       byStateRaw,
@@ -16,10 +22,10 @@ export class DashboardService {
       perRunnerRaw,
       failedByAutoRaw,
     ] = await Promise.all([
-      this.prisma.task.count({ where: { workspaceId } }),
+      this.prisma.task.count({ where: taskWhere }),
       this.prisma.task.groupBy({
         by: ['state'],
-        where: { workspaceId },
+        where: taskWhere,
         _count: { _all: true },
       }),
       this.prisma.runner.findMany({
@@ -27,19 +33,19 @@ export class DashboardService {
         select: { id: true, label: true, status: true },
       }),
       this.prisma.eventLog.count({
-        where: { type: 'ALERT', task: { workspaceId } },
+        where: { type: 'ALERT', task: eventTaskWhere },
       }),
       this.prisma.eventLog.count({
-        where: { type: 'ERROR', task: { workspaceId } },
+        where: { type: 'ERROR', task: eventTaskWhere },
       }),
       this.prisma.task.groupBy({
         by: ['runnerId'],
-        where: { workspaceId, runnerId: { not: null } },
+        where: { ...taskWhere, runnerId: { not: null } },
         _count: { _all: true },
       }),
       this.prisma.task.groupBy({
         by: ['automationId'],
-        where: { workspaceId, state: 'FAILED' },
+        where: { ...taskWhere, state: 'FAILED' },
         _count: { _all: true },
       }),
     ]);
@@ -55,7 +61,10 @@ export class DashboardService {
     }));
 
     const automations = await this.prisma.automation.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(accessibleIds ? { id: { in: accessibleIds } } : {}),
+      },
       select: { id: true, name: true, label: true },
     });
     const autoNames = new Map(automations.map((a) => [a.id, a.name]));
@@ -70,7 +79,7 @@ export class DashboardService {
 
     return {
       totalTasks,
-      schedules: await this.prisma.schedule.count({ where: { workspaceId } }),
+      schedules: await this.prisma.schedule.count({ where: taskWhere }),
       alerts,
       errors,
       byState: {
@@ -90,14 +99,18 @@ export class DashboardService {
       },
       tasksPerRunner,
       failedByAutomation,
-      roi: await this.computeRoi(workspaceId),
+      roi: await this.computeRoi(workspaceId, accessibleIds),
     };
   }
 
-  async live(workspaceId: string) {
+  async live(workspaceId: string, accessibleIds?: string[] | null) {
     const activeStates: TaskState[] = ['QUEUED', 'DISPATCHED', 'RUNNING'];
     const queue = await this.prisma.task.findMany({
-      where: { workspaceId, state: { in: activeStates } },
+      where: {
+        workspaceId,
+        state: { in: activeStates },
+        ...(accessibleIds ? { automationId: { in: accessibleIds } } : {}),
+      },
       include: {
         automation: { select: { name: true } },
         runner: { select: { label: true } },
@@ -108,11 +121,15 @@ export class DashboardService {
     return { queue };
   }
 
-  private async computeRoi(workspaceId: string) {
+  private async computeRoi(
+    workspaceId: string,
+    accessibleIds?: string[] | null,
+  ) {
     const automations = await this.prisma.automation.findMany({
       where: {
         workspaceId,
         manualMinutesPerItem: { not: null },
+        ...(accessibleIds ? { id: { in: accessibleIds } } : {}),
       },
       select: {
         id: true,

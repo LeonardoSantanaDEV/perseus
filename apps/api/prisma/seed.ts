@@ -13,10 +13,31 @@ async function main() {
     create: { id: 'default-workspace', name: 'Default Workspace' },
   });
 
-  await prisma.repository.upsert({
+  const defaultRepo = await prisma.repository.upsert({
     where: { workspaceId_name: { workspaceId: workspace.id, name: 'DEFAULT' } },
     update: {},
     create: { name: 'DEFAULT', workspaceId: workspace.id },
+  });
+
+  // Grupo de acesso DEFAULT, sempre vinculado ao repositório DEFAULT.
+  const defaultGroup = await prisma.accessGroup.upsert({
+    where: { workspaceId_name: { workspaceId: workspace.id, name: 'DEFAULT' } },
+    update: {},
+    create: {
+      name: 'DEFAULT',
+      description: 'Acesso padrão',
+      workspaceId: workspace.id,
+    },
+  });
+  await prisma.accessGroupRepository.upsert({
+    where: {
+      groupId_repositoryId: {
+        groupId: defaultGroup.id,
+        repositoryId: defaultRepo.id,
+      },
+    },
+    update: {},
+    create: { groupId: defaultGroup.id, repositoryId: defaultRepo.id },
   });
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -27,7 +48,7 @@ async function main() {
       email: adminEmail,
       passwordHash,
       name: 'Administrador',
-      role: Role.ADMIN,
+      role: Role.ADMINISTRADOR,
       workspaceId: workspace.id,
     },
   });

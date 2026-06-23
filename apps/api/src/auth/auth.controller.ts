@@ -19,7 +19,7 @@ export class AuthController {
 
   // Criação de usuários é restrita a administradores autenticados.
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMINISTRADOR')
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);

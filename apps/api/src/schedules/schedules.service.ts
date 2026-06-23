@@ -3,6 +3,7 @@ import {
   OnModuleInit,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -35,9 +36,12 @@ export class SchedulesService implements OnModuleInit {
     this.logger.log(`${schedules.length} agendamento(s) carregado(s)`);
   }
 
-  findAll(workspaceId: string) {
+  findAll(workspaceId: string, accessibleIds?: string[] | null) {
     return this.prisma.schedule.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(accessibleIds ? { automationId: { in: accessibleIds } } : {}),
+      },
       include: {
         automation: { select: { name: true, label: true } },
         runner: { select: { label: true } },
@@ -46,7 +50,14 @@ export class SchedulesService implements OnModuleInit {
     });
   }
 
-  async create(workspaceId: string, dto: CreateScheduleDto) {
+  async create(
+    workspaceId: string,
+    dto: CreateScheduleDto,
+    accessibleIds?: string[] | null,
+  ) {
+    if (accessibleIds && !accessibleIds.includes(dto.automationId)) {
+      throw new ForbiddenException('Sem acesso a esta automação');
+    }
     const automation = await this.prisma.automation.findFirst({
       where: { id: dto.automationId, workspaceId },
     });
@@ -67,11 +78,19 @@ export class SchedulesService implements OnModuleInit {
     return schedule;
   }
 
-  async update(workspaceId: string, id: string, dto: UpdateScheduleDto) {
+  async update(
+    workspaceId: string,
+    id: string,
+    dto: UpdateScheduleDto,
+    accessibleIds?: string[] | null,
+  ) {
     const existing = await this.prisma.schedule.findFirst({
       where: { id, workspaceId },
     });
     if (!existing) throw new NotFoundException('Agendamento não encontrado');
+    if (accessibleIds && !accessibleIds.includes(existing.automationId)) {
+      throw new ForbiddenException('Sem acesso a este agendamento');
+    }
     if (dto.cron) this.assertCron(dto.cron);
 
     const schedule = await this.prisma.schedule.update({
@@ -89,11 +108,14 @@ export class SchedulesService implements OnModuleInit {
     return schedule;
   }
 
-  async remove(workspaceId: string, id: string) {
+  async remove(workspaceId: string, id: string, accessibleIds?: string[] | null) {
     const existing = await this.prisma.schedule.findFirst({
       where: { id, workspaceId },
     });
     if (!existing) throw new NotFoundException('Agendamento não encontrado');
+    if (accessibleIds && !accessibleIds.includes(existing.automationId)) {
+      throw new ForbiddenException('Sem acesso a este agendamento');
+    }
     this.unregister(id);
     await this.prisma.schedule.delete({ where: { id } });
     return { ok: true };

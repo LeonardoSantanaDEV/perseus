@@ -6,6 +6,7 @@ import {
   Bot,
   ListChecks,
   CalendarClock,
+  KeyRound,
   LogOut,
   ShieldHalf,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const NAV = [
   { to: '/automations', label: 'Automações', icon: Bot },
   { to: '/tasks', label: 'Tarefas', icon: ListChecks },
   { to: '/schedules', label: 'Agendamento', icon: CalendarClock },
+  { to: '/access', label: 'Acessos', icon: KeyRound, roles: ['ADMINISTRADOR'] },
 ];
 
 function initials(name?: string, email?: string) {
@@ -64,7 +66,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </p>
 
         <nav className="flex-1 px-3 space-y-0.5">
-          {NAV.map((item) => (
+          {NAV.filter((item) => !item.roles || item.roles.includes(user?.role ?? '')).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

@@ -1,8 +1,17 @@
+export type Role = 'OPERADOR' | 'DESENVOLVEDOR' | 'GERENTE' | 'ADMINISTRADOR';
+
+export const ROLES: Role[] = [
+  'OPERADOR',
+  'DESENVOLVEDOR',
+  'GERENTE',
+  'ADMINISTRADOR',
+];
+
 export interface User {
   id: string;
   email: string;
   name?: string;
-  role: 'ADMIN' | 'OPERATOR' | 'CLIENT';
+  role: Role;
 }
 
 export interface Runner {
@@ -71,6 +80,44 @@ export interface Schedule {
   runner?: { label: string } | null;
   automationId: string;
   runnerId?: string;
+}
+
+export interface AccessUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  role: Role;
+  emailVerifiedAt?: string | null;
+  createdAt: string;
+  groupIds: string[];
+}
+
+export interface AccessGroup {
+  id: string;
+  name: string;
+  description?: string | null;
+  repositoryIds: string[];
+  _count?: { users: number; repositories: number };
+}
+
+export interface AccessRepository {
+  id: string;
+  name: string;
+  automations: { id: string; name: string; label: string }[];
+}
+
+export interface AccessAutomation {
+  id: string;
+  name: string;
+  label: string;
+  repositoryId: string;
+}
+
+export interface AccessOverview {
+  users: AccessUser[];
+  groups: AccessGroup[];
+  repositories: AccessRepository[];
+  automations: AccessAutomation[];
 }
 
 export interface DashboardSummary {

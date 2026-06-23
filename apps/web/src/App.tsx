@@ -9,8 +9,16 @@ import { AutomationDetail } from './pages/AutomationDetail';
 import { Tasks } from './pages/Tasks';
 import { TaskDetail } from './pages/TaskDetail';
 import { Schedules } from './pages/Schedules';
+import { Access } from './pages/Access';
+import { ConfirmAccess } from './pages/ConfirmAccess';
 
-function Protected({ children }: { children: React.ReactNode }) {
+function Protected({
+  children,
+  roles,
+}: {
+  children: React.ReactNode;
+  roles?: string[];
+}) {
   const { user, loading } = useAuth();
   if (loading)
     return (
@@ -19,6 +27,10 @@ function Protected({ children }: { children: React.ReactNode }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  // Sem permissão para a rota: volta para a Central de Operações.
+  if (roles && !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
   return <Layout>{children}</Layout>;
 }
 
@@ -26,6 +38,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/confirmar" element={<ConfirmAccess />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/runners" element={<Protected><Runners /></Protected>} />
       <Route path="/automations" element={<Protected><Automations /></Protected>} />
@@ -36,6 +49,14 @@ export function App() {
       <Route path="/tasks" element={<Protected><Tasks /></Protected>} />
       <Route path="/tasks/:id" element={<Protected><TaskDetail /></Protected>} />
       <Route path="/schedules" element={<Protected><Schedules /></Protected>} />
+      <Route
+        path="/access"
+        element={
+          <Protected roles={['ADMINISTRADOR']}>
+            <Access />
+          </Protected>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

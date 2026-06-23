@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './storage/storage.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { AuthModule } from './auth/auth.module';
+import { AccessModule } from './access/access.module';
 import { UsersModule } from './users/users.module';
 import { AutomationsModule } from './automations/automations.module';
 import { BotVersionsModule } from './bot-versions/bot-versions.module';
@@ -22,6 +23,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     StorageModule,
     RealtimeModule,
     AuthModule,
+    AccessModule,
     UsersModule,
     AutomationsModule,
     BotVersionsModule,

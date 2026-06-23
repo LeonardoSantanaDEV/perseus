@@ -17,9 +17,12 @@ export class AutomationsService {
     });
   }
 
-  async findAll(workspaceId: string) {
+  async findAll(workspaceId: string, accessibleIds?: string[] | null) {
     const automations = await this.prisma.automation.findMany({
-      where: { workspaceId },
+      where: {
+        workspaceId,
+        ...(accessibleIds ? { id: { in: accessibleIds } } : {}),
+      },
       include: {
         repository: true,
         versions: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -34,7 +37,14 @@ export class AutomationsService {
     }));
   }
 
-  async findOne(workspaceId: string, id: string) {
+  async findOne(
+    workspaceId: string,
+    id: string,
+    accessibleIds?: string[] | null,
+  ) {
+    if (accessibleIds && !accessibleIds.includes(id)) {
+      throw new NotFoundException('Automação não encontrada');
+    }
     const automation = await this.prisma.automation.findFirst({
       where: { id, workspaceId },
       include: {

@@ -31,13 +31,13 @@ export class RunnersController {
   }
 
   @Post()
-  @Roles('ADMIN', 'OPERATOR')
+  @Roles('ADMINISTRADOR', 'OPERADOR')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateRunnerDto) {
     return this.service.create(user.workspaceId, dto);
   }
 
   @Patch(':id')
-  @Roles('ADMIN', 'OPERATOR')
+  @Roles('ADMINISTRADOR', 'OPERADOR')
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -47,13 +47,13 @@ export class RunnersController {
   }
 
   @Post(':id/regenerate-token')
-  @Roles('ADMIN', 'OPERATOR')
+  @Roles('ADMINISTRADOR', 'OPERADOR')
   regenerate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.regenerateToken(user.workspaceId, id);
   }
 
   @Delete(':id')
-  @Roles('ADMIN')
+  @Roles('ADMINISTRADOR')
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.remove(user.workspaceId, id);
   }

@@ -11,7 +11,7 @@ export class UsersController {
   constructor(private users: UsersService) {}
 
   @Get()
-  @Roles('ADMIN')
+  @Roles('ADMINISTRADOR')
   findAll(@CurrentUser() user: AuthUser) {
     return this.users.findAll(user.workspaceId);
   }

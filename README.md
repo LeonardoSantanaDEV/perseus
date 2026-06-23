@@ -4,7 +4,8 @@
 
 Plataforma de orquestração e automação de bots. Permite cadastrar automações,
 versionar pacotes, conectar runners (máquinas) em tempo real, disparar tarefas
-(manuais ou agendadas) e monitorar tudo num dashboard com ROI.
+(manuais ou agendadas) e monitorar tudo num dashboard com ROI — com **controle de
+acesso por grupos** (usuários, grupos e repositórios) e Funções.
 
 Veja a arquitetura completa em [`ARCHITECTURE.md`](./ARCHITECTURE.md) e a documentação técnica em [`docs/README.md`](./docs/README.md).
 
@@ -87,7 +88,7 @@ python -m runner.setup         # wizard: login -> nova/existente -> grava o toke
 O wizard pede a URL do Perseus, autentica com seu **login/senha** e então:
 
 - **Nova runner** — cria a runner no portal e **salva o token automaticamente**
-  (requer usuário ADMIN ou OPERATOR).
+  (requer usuário com Função ADMINISTRADOR ou OPERADOR).
 - **Runner existente** — você cola o token da máquina (obtido com o administrador).
 
 Depois, inicie o agente (e registre como serviço para subir no boot — veja
@@ -147,6 +148,39 @@ Veja um exemplo completo em [`examples/hello-bot`](./examples/hello-bot).
 3. Dispare uma **tarefa** (manual ou agende via cron).
 4. O runner baixa o pacote, cria um venv, instala as dependências e executa.
 5. O bot reporta status/itens/artefatos via SDK; acompanhe tudo no dashboard.
+
+---
+
+## Controle de acessos
+
+A aba **Acessos** (visível apenas para a Função **ADMINISTRADOR**) centraliza a
+liberação de acesso por **grupos**, em três abas:
+
+- **Usuários** — adicione usuários por e-mail (cria já ativo e envia um link de
+  confirmação para definir a senha), exclua, reenvie o link e defina os **grupos**
+  de cada usuário.
+- **Grupos de Acessos** — crie grupos e selecione os **repositórios** que cada um libera.
+- **Repositórios** — associe cada automação a um repositório (selecione a automação,
+  depois o repositório).
+
+A hierarquia é **Usuário → Grupo de Acesso → Repositório → Automação**. Quem não é
+ADMINISTRADOR só enxerga — em **Automações**, **Tarefas**, **Agendamentos** e na
+**Central de Operações** — o que pertence aos seus grupos. O grupo e o repositório
+**DEFAULT** são criados no seed e ficam sempre vinculados entre si.
+
+### Funções
+
+`OPERADOR`, `DESENVOLVEDOR`, `GERENTE` e `ADMINISTRADOR`. Por enquanto a única regra
+por Função é que **somente ADMINISTRADOR** acessa a aba Acessos; as demais áreas são
+visíveis a todas as Funções (com o conteúdo filtrado pelos grupos).
+
+### E-mail de confirmação (convite)
+
+Configure o SMTP em [`apps/api/.env`](./apps/api/.env.example) (`SMTP_HOST`,
+`SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) e o `APP_URL`
+(base do front usada nos links). **Sem `SMTP_HOST`**, o link de confirmação é apenas
+registrado no log e exibido na tela (fallback de desenvolvimento); quando `APP_URL`
+não está definido, o link usa o `WEB_ORIGIN`.
 
 ---
 

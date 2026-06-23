@@ -30,7 +30,7 @@ export class BotVersionsController {
   }
 
   @Post()
-  @Roles('ADMIN', 'OPERATOR')
+  @Roles('ADMINISTRADOR', 'OPERADOR')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 200 * 1024 * 1024 } }),
   )
@@ -44,7 +44,7 @@ export class BotVersionsController {
   }
 
   @Delete(':versionId')
-  @Roles('ADMIN', 'OPERATOR')
+  @Roles('ADMINISTRADOR', 'OPERADOR')
   remove(
     @CurrentUser() user: AuthUser,
     @Param('automationId') automationId: string,

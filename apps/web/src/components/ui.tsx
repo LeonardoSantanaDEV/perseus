@@ -6,6 +6,7 @@ import {
   TextareaHTMLAttributes,
   forwardRef,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
 
 function cx(...parts: (string | false | undefined | null)[]) {
@@ -313,5 +314,47 @@ export function PageLoader() {
       <Spinner className="text-blue-600" />
       <span className="text-sm">Carregando…</span>
     </div>
+  );
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  maxWidth = 'max-w-lg',
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  maxWidth?: string;
+}) {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        className={cx(
+          'relative w-full bg-white rounded-2xl border border-slate-200 p-6 animate-fade-in',
+          maxWidth,
+        )}
+        style={{ boxShadow: '0 20px 60px -15px rgba(15,23,42,0.35)' }}
+      >
+        {title && (
+          <h2 className="text-lg font-bold text-slate-900 mb-4">{title}</h2>
+        )}
+        {children}
+        {footer && (
+          <div className="flex justify-end gap-2 mt-6">{footer}</div>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }

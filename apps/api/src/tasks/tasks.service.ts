@@ -33,9 +33,17 @@ export class TasksService {
 
   // ---------- Consultas ----------
 
-  findAll(workspaceId: string, filter?: { state?: TaskState }) {
+  findAll(
+    workspaceId: string,
+    filter?: { state?: TaskState },
+    accessibleIds?: string[] | null,
+  ) {
     return this.prisma.task.findMany({
-      where: { workspaceId, ...(filter?.state ? { state: filter.state } : {}) },
+      where: {
+        workspaceId,
+        ...(filter?.state ? { state: filter.state } : {}),
+        ...(accessibleIds ? { automationId: { in: accessibleIds } } : {}),
+      },
       include: {
         automation: { select: { name: true, label: true } },
         runner: { select: { label: true } },
@@ -46,9 +54,17 @@ export class TasksService {
     });
   }
 
-  async findOne(workspaceId: string, id: string) {
+  async findOne(
+    workspaceId: string,
+    id: string,
+    accessibleIds?: string[] | null,
+  ) {
     const task = await this.prisma.task.findFirst({
-      where: { id, workspaceId },
+      where: {
+        id,
+        workspaceId,
+        ...(accessibleIds ? { automationId: { in: accessibleIds } } : {}),
+      },
       include: {
         automation: true,
         runner: true,

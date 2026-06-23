@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AutomationsService } from './automations.service';
+import { AccessService } from '../access/access.service';
 import { CreateAutomationDto, UpdateAutomationDto } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
@@ -16,7 +17,10 @@ import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class AutomationsController {
-  constructor(private service: AutomationsService) {}
+  constructor(
+    private service: AutomationsService,
+    private access: AccessService,
+  ) {}
 
   @Get('repositories')
   repositories(@CurrentUser() user: AuthUser) {
@@ -24,13 +28,15 @@ export class AutomationsController {
   }
 
   @Get('automations')
-  findAll(@CurrentUser() user: AuthUser) {
-    return this.service.findAll(user.workspaceId);
+  async findAll(@CurrentUser() user: AuthUser) {
+    const accessibleIds = await this.access.accessibleAutomationIds(user);
+    return this.service.findAll(user.workspaceId, accessibleIds);
   }
 
   @Get('automations/:id')
-  findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.findOne(user.workspaceId, id);
+  async findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    const accessibleIds = await this.access.accessibleAutomationIds(user);
+    return this.service.findOne(user.workspaceId, id, accessibleIds);
   }
 
   @Post('automations')
