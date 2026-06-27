@@ -113,7 +113,7 @@ def _create_runner(api_url: str, token: str, label: str) -> str:
     if resp.status_code == 403:
         print(
             "\n  Seu usuário não tem permissão para criar runners "
-            "(necessário ADMIN ou OPERATOR)."
+            "(necessário ADMINISTRADOR ou OPERADOR)."
         )
         print(
             "  Peça a um administrador para criar a runner e te passar o token, "

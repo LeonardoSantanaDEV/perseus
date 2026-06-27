@@ -21,11 +21,16 @@ Portas de **entrada** não são necessárias — o runner sempre inicia a conex�
 
 ## 1. Instalar o runner
 
+> **Forma rápida (recomendada):** copie `apps/runner` para a máquina e rode
+> `setup.bat` (Windows) ou `./setup.sh` (Linux) — faz venv + dependências +
+> provisionamento de uma vez. Depois suba com `runner.bat` / `./runner.sh`.
+> Os passos manuais abaixo são equivalentes ao que esses scripts automatizam.
+
 A configuração (URL + token) é feita por um **wizard** (`python -m runner.setup`):
 ele autentica com seu **login/senha** no Perseus e grava o `.env` automaticamente.
 
 - **Nova runner** — o wizard cria a runner no portal e **salva o token sozinho**
-  (requer usuário **ADMIN** ou **OPERATOR**). Não há cópia manual de token.
+  (requer usuário com Função **ADMINISTRADOR** ou **OPERADOR**). Não há cópia manual de token.
 - **Runner existente** — você cola o token da máquina. O token só é mostrado na
   criação/regeneração e é **obtido com o administrador** da aplicação.
 

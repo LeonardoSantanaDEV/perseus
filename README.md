@@ -86,37 +86,64 @@ com segredos padrão.
 ## Runner
 
 O runner é um agente que roda **na máquina que vai executar os bots** (VM, VPS,
-servidor físico), separado da stack Docker. Configuração inicial via wizard:
+servidor físico), separado da stack Docker. Único pré-requisito: **Python 3.10+**
+instalado e no PATH.
 
-```bash
-cd apps/runner
-python -m venv .venv
-.venv\Scripts\activate         # Windows  (Linux/Mac: source .venv/bin/activate)
-pip install -r requirements.txt
+Copie a pasta [`apps/runner`](./apps/runner) (e [`packages/sdk-python`](./packages/sdk-python),
+mantendo a estrutura do repositório) para a máquina e rode **dois passos**:
 
-python -m runner.setup         # wizard: login -> nova/existente -> grava o token
+### 1. Configurar a máquina (uma vez) — `setup`
+
+Cria o ambiente virtual, instala as dependências e roda o wizard de provisionamento.
+
+```bat
+:: Windows  (dê duplo clique ou rode no terminal)
+setup.bat
 ```
 
-O wizard pede a URL do Perseus, autentica com seu **login/senha** e então:
+```bash
+# Linux / macOS
+chmod +x setup.sh runner.sh && ./setup.sh
+```
+
+O wizard pede a **URL do Perseus**, autentica com seu **login/senha** e oferece:
 
 - **Nova runner** — cria a runner no portal e **salva o token automaticamente**
-  (requer usuário com Função ADMINISTRADOR ou OPERADOR).
+  (requer usuário com Função **ADMINISTRADOR** ou **OPERADOR**).
 - **Runner existente** — você cola o token da máquina (obtido com o administrador).
 
-Depois, inicie o agente (e registre como serviço para subir no boot — veja
-[`docs/07-provisionamento-runner.md`](./docs/07-provisionamento-runner.md)):
+### 2. Subir a runner (ficar ONLINE) — `runner`
 
-```bash
-python -m runner.main
+Conecta ao Perseus e deixa a máquina **disponível** no orquestrador, pronta para
+receber tarefas. Mantenha o processo rodando.
+
+```bat
+:: Windows
+runner.bat
 ```
 
+```bash
+# Linux / macOS
+./runner.sh
+```
+
+Para subir no boot, registre como serviço (Windows: NSSM / Agendador de Tarefas;
+Linux: `systemd`) — veja [`docs/07-provisionamento-runner.md`](./docs/07-provisionamento-runner.md).
 Logs em `apps/runner/logs/runner.log`.
 
-### SDK (instalação editável para os bots)
+> **Passo manual (alternativo aos scripts):**
+> ```bash
+> cd apps/runner
+> python -m venv .venv && .venv\Scripts\activate   # Linux/Mac: source .venv/bin/activate
+> pip install -r requirements.txt
+> python -m runner.setup     # provisiona (.env)
+> python -m runner.main      # sobe a runner
+> ```
 
-```bash
-pip install -e packages/sdk-python
-```
+> **SDK dos bots:** o runner instala o SDK automaticamente no venv de cada bot, a
+> partir do caminho `SDK_PATH` do [`.env`](./apps/runner/.env.example) (padrão
+> `../../packages/sdk-python`). Por isso a pasta `packages/sdk-python` precisa existir
+> na máquina. Para desenvolver bots localmente: `pip install -e packages/sdk-python`.
 
 ---
 
@@ -150,6 +177,62 @@ meu-bot.zip
 ```
 
 Veja um exemplo completo em [`examples/hello-bot`](./examples/hello-bot).
+
+---
+
+## Reportando itens e resultado (SDK)
+
+No fim da execução, o bot informa ao Perseus **quantos itens processou, quantos
+falharam, o total e uma mensagem-resumo** — tudo numa única chamada `finish_task`
+do SDK. Esses valores aparecem no **detalhe da tarefa**, e `processed` alimenta o
+**ROI** da Central de Operações.
+
+Padrão recomendado: conte por item dentro do loop e finalize **uma vez** no fim.
+
+```python
+from perseus_sdk import PerseusClient
+
+client = PerseusClient.from_env()
+client.start_task()
+
+itens = [...]               # o que o bot vai processar (linhas, registros, e-mails…)
+total = len(itens)          # 1) TOTAL de itens
+processed = 0               # 2) itens PROCESSADOS (sucesso)
+failed = 0                  # 3) itens com FALHA
+
+for item in itens:
+    try:
+        # ... processa o item ...
+        processed += 1
+        client.log(f"Item OK: {item}")
+    except Exception as e:
+        failed += 1
+        client.error(e, context={"item": item})         # registra um evento de ERRO
+        client.log(f"Item falhou: {e}", level="error")
+
+# Status final: SUCCESS se nada falhou; senão FAILED
+status = "SUCCESS" if failed == 0 else "FAILED"
+
+client.finish_task(
+    status=status,                                       # "SUCCESS" | "FAILED"
+    total_items=total,                                   # 1) total de itens
+    processed=processed,                                 # 2) processados (sucesso)
+    failed=failed,                                       # 3) falhas
+    message=f"{processed}/{total} processados, {failed} falhas",  # 4) MENSAGEM-resumo
+)
+```
+
+| Configuração | Parâmetro de `finish_task` | Onde aparece |
+|---|---|---|
+| Total de itens | `total_items` | Detalhe da tarefa |
+| Itens processados | `processed` | Detalhe da tarefa + **ROI** |
+| Itens com falha | `failed` | Detalhe da tarefa |
+| Mensagem final | `message` | Detalhe da tarefa (resumo) |
+
+> Chame `finish_task` **uma única vez**, ao final. As mensagens ao longo da execução
+> vão por `client.log(...)` (logs) e `client.error(...)` (eventos de erro) — separadas
+> do `message` final, que é o resumo único. Veja o exemplo completo em
+> [`examples/rpa-challenge/main.py`](./examples/rpa-challenge/main.py).
 
 ---
 
