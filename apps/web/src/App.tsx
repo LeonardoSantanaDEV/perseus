@@ -9,6 +9,7 @@ import { AutomationDetail } from './pages/AutomationDetail';
 import { Tasks } from './pages/Tasks';
 import { TaskDetail } from './pages/TaskDetail';
 import { Schedules } from './pages/Schedules';
+import { Queue } from './pages/Queue';
 import { Access } from './pages/Access';
 import { ConfirmAccess } from './pages/ConfirmAccess';
 
@@ -41,6 +42,7 @@ export function App() {
       <Route path="/confirmar" element={<ConfirmAccess />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/runners" element={<Protected><Runners /></Protected>} />
+      <Route path="/queue" element={<Protected><Queue /></Protected>} />
       <Route path="/automations" element={<Protected><Automations /></Protected>} />
       <Route
         path="/automations/:id"

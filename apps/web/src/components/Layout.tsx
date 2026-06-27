@@ -7,6 +7,7 @@ import {
   ListChecks,
   CalendarClock,
   KeyRound,
+  ListOrdered,
   LogOut,
   ShieldHalf,
 } from 'lucide-react';
@@ -15,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 const NAV = [
   { to: '/', label: 'Central de Operações', icon: LayoutDashboard, end: true },
   { to: '/runners', label: 'Runners', icon: Server },
+  { to: '/queue', label: 'Fila', icon: ListOrdered },
   { to: '/automations', label: 'Automações', icon: Bot },
   { to: '/tasks', label: 'Tarefas', icon: ListChecks },
   { to: '/schedules', label: 'Agendamento', icon: CalendarClock },

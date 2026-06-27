@@ -11,6 +11,12 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
+# OpenSSL no build para o "prisma generate" detectar o alvo certo
+# (debian-openssl-3.0.x) e não cair no fallback 1.1.x.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 # Manifests primeiro (camada cacheável). Como é um monorepo com workspaces,
 # o package.json de cada workspace precisa existir para o npm install resolver.
 COPY package.json package-lock.json* ./

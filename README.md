@@ -69,6 +69,18 @@ Ajuste segredos (JWT, senha do admin, chaves do MinIO, portas) no `.env` da raiz
 veja [`.env.example`](./.env.example). Em `NODE_ENV=production` a API recusa subir
 com segredos padrão.
 
+> **Conflito de porta?** Se aparecer `Bind for 0.0.0.0:8080 failed: port is already
+> allocated`, a porta já está em uso por outro serviço no host. Troque a porta no
+> `.env` da raiz e rode `docker compose up -d` de novo:
+> - **Web** — ajuste `WEB_PORT` **e** `WEB_ORIGIN` juntos (o `WEB_ORIGIN` precisa
+>   apontar para a nova porta, ex.: `WEB_PORT=8081` e `WEB_ORIGIN=http://localhost:8081`,
+>   senão o login falha por CORS e os links de confirmação saem errados).
+> - Outras portas: `API_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `MINIO_PORT`,
+>   `MINIO_CONSOLE_PORT`.
+>
+> Para descobrir quem ocupa a porta: `docker ps --filter "publish=8080"` (container)
+> ou, no Windows, `Get-NetTCPConnection -LocalPort 8080`.
+
 ---
 
 ## Runner
@@ -181,6 +193,59 @@ Configure o SMTP em [`apps/api/.env`](./apps/api/.env.example) (`SMTP_HOST`,
 (base do front usada nos links). **Sem `SMTP_HOST`**, o link de confirmação é apenas
 registrado no log e exibido na tela (fallback de desenvolvimento); quando `APP_URL`
 não está definido, o link usa o `WEB_ORIGIN`.
+
+---
+
+## Fila (banco externo)
+
+A tela **Fila** mostra os itens (`item_run`) de uma fila lida de um **banco
+Postgres externo, somente leitura** — separado do banco do Perseus. **Precisa ser
+configurada em cada ambiente** onde o Perseus for instalado.
+
+### 1. Apontar o banco da fila
+
+No `.env` da **raiz** (lido pelo docker-compose), defina a connection string do
+banco (use um usuário **somente leitura**) e, se necessário, os ajustes:
+
+```bash
+QUEUE_DATABASE_URL=postgresql://usuario_ro:senha@host-do-banco:5432/orquestrador
+QUEUE_DATE_COLUMN=created_at      # coluna p/ janela de histórico + ordenação (DESC)
+QUEUE_HISTORY_DAYS=30             # histórico inicial (dias)
+QUEUE_PAGE_SIZE=25                # itens por página
+QUEUE_STATEMENT_TIMEOUT_MS=8000   # timeout de cada consulta
+```
+
+Recrie só a API (mudança de env, **sem rebuild**):
+
+```bash
+docker compose up -d api
+```
+
+> **Modo dev (sem Docker):** coloque as mesmas variáveis em `apps/api/.env` e
+> reinicie a API. Sem `QUEUE_DATABASE_URL`, a tela mostra "banco da fila não
+> configurado". Veja [`apps/api/.env.example`](./apps/api/.env.example).
+
+### 2. Como o banco precisa estar organizado
+
+- **1 schema por automação**, com o **nome do schema = `label` da automação** no
+  Perseus. Schemas sem automação correspondente (ou fora do grupo de acesso do
+  usuário) não aparecem.
+- Cada schema tem uma tabela **`item_run`** com as colunas padrão:
+  `item_id, run_id, process_name, item_key, area, priority, status, tags,
+  resource_name, attempt, payload, started_at, last_updated_at, next_review_at,
+  completed_at, total_work_time, exception_at, exception_reason`.
+- Mais a coluna usada em `QUEUE_DATE_COLUMN` (padrão `created_at`) para a janela de
+  histórico e a ordenação (`DESC`). Se a tabela não tiver `created_at`, ajuste
+  `QUEUE_DATE_COLUMN` para uma coluna de data existente (ex.: `started_at`).
+
+### 3. Comportamento
+
+- **Gating por acesso**: cada usuário só vê os schemas cujo `label` de automação
+  está no(s) seu(s) grupo(s); **ADMINISTRADOR** vê todos os que têm automação
+  correspondente.
+- **Somente leitura** — nada é escrito no banco externo.
+- **Atualização manual**: o botão **Atualizar** abre um pop-up de confirmação e só
+  então recarrega (sem polling). Paginação de 25 itens e caixa de busca por schema.
 
 ---
 

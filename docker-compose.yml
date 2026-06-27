@@ -96,6 +96,12 @@ services:
       # Endpoint público acessível pelo runner/browser (host)
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       RUNNER_OFFLINE_AFTER_SECONDS: ${RUNNER_OFFLINE_AFTER_SECONDS:-30}
+      # Fila (banco externo, somente leitura) — veja apps/api/.env.example
+      QUEUE_DATABASE_URL: ${QUEUE_DATABASE_URL:-}
+      QUEUE_DATE_COLUMN: ${QUEUE_DATE_COLUMN:-created_at}
+      QUEUE_HISTORY_DAYS: ${QUEUE_HISTORY_DAYS:-30}
+      QUEUE_PAGE_SIZE: ${QUEUE_PAGE_SIZE:-25}
+      QUEUE_STATEMENT_TIMEOUT_MS: ${QUEUE_STATEMENT_TIMEOUT_MS:-8000}
     ports:
       - "${API_PORT:-3000}:3000"
     volumes:

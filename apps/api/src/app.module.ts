@@ -12,6 +12,7 @@ import { BotVersionsModule } from './bot-versions/bot-versions.module';
 import { RunnersModule } from './runners/runners.module';
 import { TasksModule } from './tasks/tasks.module';
 import { SchedulesModule } from './schedules/schedules.module';
+import { QueueModule } from './queue/queue.module';
 import { EventsModule } from './events/events.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
@@ -30,6 +31,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     RunnersModule,
     TasksModule,
     SchedulesModule,
+    QueueModule,
     EventsModule,
     DashboardModule,
   ],

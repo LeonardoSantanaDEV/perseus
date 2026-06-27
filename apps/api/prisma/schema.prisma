@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" cobre o dev local; "debian-openssl-3.0.x" é o runtime do container
+  // (node:20-bookworm-slim). Sem isso, o engine gerado no build não bate com o
+  // runtime e a API não inicia ("could not locate the Query Engine").
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

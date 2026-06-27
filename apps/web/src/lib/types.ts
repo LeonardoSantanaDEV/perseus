@@ -120,6 +120,32 @@ export interface AccessOverview {
   automations: AccessAutomation[];
 }
 
+export interface QueueSchema {
+  schema: string;
+  automation: { name: string; label: string };
+  count: number | null;
+  error: string | null;
+}
+
+export interface QueueSchemasResponse {
+  configured: boolean;
+  error?: string;
+  historyDays?: number;
+  schemas: QueueSchema[];
+}
+
+export interface QueueItemsResponse {
+  schema: string;
+  automation: { name: string; label: string };
+  columns: string[];
+  items: Record<string, unknown>[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  historyDays: number;
+}
+
 export interface DashboardSummary {
   totalTasks: number;
   schedules: number;

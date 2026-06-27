@@ -20,6 +20,7 @@ __pycache__/
 venv/
 *.egg-info/
 .pytest_cache/
+.claude/settings*
 
 # Runner runtime
 apps/runner/_work/
